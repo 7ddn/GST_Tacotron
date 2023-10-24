@@ -217,13 +217,22 @@ class StepwiseMonotonicAttention(BahdanauMonotonicAttention):
         score:  [Batch_size, 1, T_v]
         previous_alignment: [batch_size, 1, T_v]
         '''
+        
         if self.sigmoid_noise > 0.0:
             score += self.sigmoid_noise * tf.random.normal(tf.shape(score), dtype= score.dtype)
         p_choose_i = tf.sigmoid(score)  # [Batch_size, 1, T_v]
-
-        pad = tf.zeros([tf.shape(p_choose_i)[0], 1, 1], dtype=p_choose_i.dtype)    # [Batch_size, 1, 1]
-
+        
+        '''
+        pad = tf.zeros(tf.convert_to_tensor([tf.shape(p_choose_i)[0], 1, 1]), dtype=p_choose_i.dtype)    # [Batch_size, 1, 1]
+        if (tf.shape(pad)[0] != tf.shape(p_choose_i)[0]) :
+            print(f'pad shape: {tf.shape(pad)}, p_choose_i[0]: {tf.shape(p_choose_i)[0]}, pad shape should be:{[tf.shape(p_choose_i)[0], 1, 1]}')
+        # print(f'pad shape: {tf.shape(pad)} \n other shape: {tf.shape(p_choose_i[:, :, -1])}')     
+        '''
+        padding = tf.constant([[0, 0,], [0, 0,], [1, 0,]])
+        padded = tf.pad(previous_alignment[:, :, :-1] * (1.0 - p_choose_i[:, :, :-1]), padding)
+        alignment = previous_alignment * p_choose_i + padded
+        '''
         alignment = previous_alignment * p_choose_i + tf.concat(
             [pad, previous_alignment[:, :, :-1] * (1.0 - p_choose_i[:, :, :-1])], axis= -1)
-
+        '''
         return alignment

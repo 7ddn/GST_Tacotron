@@ -42,7 +42,7 @@ class Encoder(tf.keras.Model):
             return_sequences= True
             )))
 
-        self.bulit = True
+        self.built = True
 
     def call(self, inputs, training):
         '''

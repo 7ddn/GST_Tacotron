@@ -14,9 +14,6 @@ from Modules.GST import Style_Token_Layer, GST_Concated_Encoder
 from Audio import inv_spectrogram
 from scipy.io import wavfile
 
-def remove_letter(text):
-    return tf.strings.regex_replace(text, f'[0-9]', '')
-
 with open('Hyper_Parameters.json', 'r') as f:
     hp_Dict = json.load(f)
 
@@ -116,7 +113,7 @@ class GST_Tacotron:
             tensor_Dict['Inference', 'GST'] = layer_Dict['Style_Token_Layer']([                
                 input_Dict['GST_Mel'],
                 input_Dict['Mel_Length']
-                ])
+                ], if_mean = True)
             tensor_Dict['Inference', 'Encoder'] = layer_Dict['GST_Concated_Encoder']([
                 tensor_Dict['Inference', 'Encoder'],
                 tensor_Dict['Inference', 'GST']
@@ -328,9 +325,7 @@ class GST_Tacotron:
             display_List = [
                 'Time: {:0.3f}'.format(time.time() - start_Time),
                 'Step: {}'.format(self.optimizer.iterations.numpy()),
-                # 'LR: {:0.5f}'.format(self.optimizer.lr(self.optimizer.iterations.numpy() - 1)),
-                # Testing
-                # 'LR: {:0.5f}'.format(self.optimizer.lr.numpy()),
+                'LR: {:0.5f}'.format(self.optimizer.lr(self.optimizer.iterations.numpy() - 1)),
                 'Loss: {:0.5f}'.format(loss),
                 ]
             print('\t\t'.join(display_List))
@@ -396,11 +391,8 @@ class GST_Tacotron:
             plt.subplot2grid((5, 1), (2, 0), rowspan=2)
             plt.imshow(np.transpose(alignment), aspect='auto', origin='lower')            
             plt.title('Alignment    Sentence: {}'.format(sentence))
-            # print(f'The sentence is {list(sentence)}, the length is {len(sentence)}')
-            # print(f'Size of alignments: {alignment.shape}')
             plt.yticks(
-                #range(alignment.shape[1]),
-                range(len(sentence)+2),
+                range(alignment.shape[1]),
                 ['<S>'] + list(sentence) + ['<E>'],
                 fontsize = 10
                 )
@@ -459,8 +451,6 @@ class GST_Tacotron:
         title_Column_List = ['Wav', 'Tag'] + ['Unit_{}'.format(x) for x in range(gst_List[0].shape[0])]
         export_List = ['\t'.join(title_Column_List)]
         for wav_Path, tag, gst in zip(wav_List, tag_List, gst_List):
-            # print(f'wav_Path: {wav_Path}, tag: {tag}, gst shape: {gst.shape}')
-            # print([x for x in gst])
             new_Line_List = [wav_Path, tag] + [x for x in gst]
             new_Line_List = ['{}'.format(x) for x in new_Line_List]
             export_List.append('\t'.join(new_Line_List))

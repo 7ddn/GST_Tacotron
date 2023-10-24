@@ -164,3 +164,10 @@ Figures/Figure.pptx
 RAdam.py
 R_Script/Token_analysis.R
 Get_Path.py
+
+# Processed Files and Models
+Pattern/
+checkpoints/
+ppg/
+GST.Results/
+accentdb/

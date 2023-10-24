@@ -5,7 +5,7 @@ from threading import Thread
 from random import shuffle
 
 from Pattern_Generator import Mel_Generate
-
+import tensorflow as tf
 
 with open('Hyper_Parameters.json', 'r') as f:
     hp_Dict = json.load(f)
@@ -25,7 +25,18 @@ class Feeder:
     def Metadata_Load(self):
         with open(hp_Dict['Token_JSON_Path'], 'r') as f:
             self.token_Index_Dict = json.load(f)
-
+        
+        '''
+            with open(hp_Dict['Text_Vectorization_Weights_Path'], 'rb') as f:
+            tw = pickle.load(f)
+            decoder = np.vectorize(lambda x: x.decode('UTF-8'))
+            tw['weights'][0] = decoder(tw['weights'][0])
+            tv = tf.keras.layers.TextVectorization.from_config(tw['config'])
+            tv.set_weights(tw['weights'])
+            # tv.set_vocabulary(tv.get_vocabulary()+['[S]', '[E]'])
+            self.tv = tv
+        '''
+    
         if self.is_Training:
             with open(os.path.join(hp_Dict['Train']['Pattern_Path'], hp_Dict['Train']['Metadata_File']).replace('\\', '/'), 'rb') as f:
                 self.metadata_Dict = pickle.load(f)
@@ -165,7 +176,7 @@ class Feeder:
 
         token_List = [
             np.array(
-                [self.token_Index_Dict['<S>']] +
+                [self.token_Index_Dict['<S>']]+
                 [self.token_Index_Dict[letter] for letter in sentence] +
                 [self.token_Index_Dict['<E>']],
                 dtype= np.int32

@@ -2,13 +2,15 @@
     "Sound": {
         "Spectrogram_Dim": 513,
         "Mel_Dim": 80,
-        "Frame_Length": 1024,
-        "Frame_Shift": 256,
+	"Frame_Length": 160,
+        "Frame_Shift": 40,
         "Sample_Rate": 16000,
         "Max_Abs_Mel": 4
     },
 
     "Token_JSON_Path": "Token_Index_Dict.ENG.json",
+
+    "Text_Vectorization_Weights_Path": "tv_layer.pkl",
 
     "GST": {
         "Use": true,
@@ -158,7 +160,7 @@
     },
 
     "Train": {
-        "Pattern_Path": "C:/Pattern/GST.Pattern.LJFV",
+        "Pattern_Path": "Pattern/VCTK",
         "Metadata_File": "METADATA.PICKLE",
         "Batch_Size": 24,
         "Pattern_Sorting": true,
@@ -184,7 +186,7 @@
     "Taco_Version": 2,
     "Use_Mixed_Precision": false,
     "Inference_Cut": true,
-    "Inference_Path": "D:/GST.Results/Inference",
-    "Checkpoint_Path": "D:/GST.Results/Checkpoint",
+    "Inference_Path": "GST.Results/Inference",
+    "Checkpoint_Path": "GST.Results/Checkpoint/VCTK",
     "Device": "0"
 }

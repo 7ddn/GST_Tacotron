@@ -6,17 +6,31 @@ from threading import Thread
 from random import shuffle
 
 from Audio import melspectrogram, spectrogram, preemphasis, inv_preemphasis
+from phonemizer.punctuation import Punctuation
+from phonemizer.backend import EspeakBackend
+from phonemizer.separator import Separator
+
+import tensorflow as tf
+
 
 with open('Hyper_Parameters.json', 'r') as f:
     hp_Dict = json.load(f)
 
-with open(hp_Dict['Token_JSON_Path'], 'r') as f:
-    token_Index_Dict = json.load(f)
+with open(hp_Dict['Text_Vectorization_Weights_Path'], 'rb') as f:
+    tw = pickle.load(f)
+    decoder = np.vectorize(lambda x: x.decode('UTF-8'))
+    tw['weights'][0] = decoder(tw['weights'][0])
+    tv = tf.keras.layers.TextVectorization.from_config(tw['config'])
+    # tv.set_vocabulary(tv.get_vocabulary()+['<S>', '<E>'])
+    tv.set_weights(tw['weights'])
 
 using_Extension = [x.upper() for x in ['.wav', '.m4a', '.flac']]
 regex_Checker = re.compile('[A-Z,.?!\-\s]+')
 max_Worker= 10
 
+
+
+'''
 def Text_Filtering(text):
     remove_Letter_List = ['(', ')', '?', '!', '\'', '\"', '[', ']', ':', ';']
     replace_List = [('  ', ' '), (' ,', ',')]
@@ -35,6 +49,10 @@ def Text_Filtering(text):
         return None
     else:
         return regex_Checker.findall(text)[0]
+'''
+
+def Text_Filtering(text):
+    return text
 
 def Mel_Generate(path, top_db= 60, range_Ignore = False):
     sig = librosa.core.load(
@@ -81,21 +99,22 @@ def Spectrogram_Generate(path, top_db= 60, range_Ignore = False):
         max_abs_value= hp_Dict['Sound']['Max_Abs_Mel']
         ).astype(np.float32))
 
-def Pattern_File_Generate(path, text, token_Index_Dict, dataset, file_Prefix='', display_Prefix = '', top_db= 60, range_Ignore = False):
+def Pattern_File_Generate(path, text, tv_layer, dataset, file_Prefix='', display_Prefix = '', top_db= 60, range_Ignore = False):
     mel = Mel_Generate(path, top_db, range_Ignore)
+
+    tv_layer = tv
+    ## TODO: change all implementation
 
     if mel is None:
         print('[{}]'.format(display_Prefix), '{}'.format(path), '->', 'Ignored because of length.')
         return
+    else:
+        pass
+        # print('[{}]'.format(display_Prefix), '{}'.format(path), '->', 'Not Ignord because of length.')
     
-    if (mel.shape[0] % factor != 0):
-        mel = np.pad(mel, ((0, factor - mel.shape[0] % factor), (0, 0)))   
     spect = Spectrogram_Generate(path, top_db, range_Ignore)
 
-    token = np.array(
-        [token_Index_Dict['<S>']] + [token_Index_Dict[letter] for letter in text] + [token_Index_Dict['<E>']],
-        dtype= np.int32
-        )
+    token = np.squeeze(tv_layer(text).numpy())
     
     new_Pattern_Dict = {
         'Token': token,
@@ -305,9 +324,9 @@ def FV_Info_Load(fv_Path, max_Count= None):
 
 
 
-def Metadata_Generate(token_Index_Dict):
+def Metadata_Generate():
     new_Metadata_Dict = {
-        'Token_Index_Dict': token_Index_Dict,        
+        # 'Token_Index_Dict': token_Index_Dict,        
         'Spectrogram_Dim': hp_Dict['Sound']['Spectrogram_Dim'],
         'Mel_Dim': hp_Dict['Sound']['Mel_Dim'],
         'Frame_Shift': hp_Dict['Sound']['Frame_Shift'],
@@ -350,8 +369,6 @@ if __name__ == '__main__':
     argParser.add_argument("-mc", "--max_count", required=False)
     argParser.add_argument("-mw", "--max_worker", required=False)
     argParser.set_defaults(max_worker = 10)
-    argParser.add_argument("--factor", required=False)
-    argParser.set_defaults(factor = 4)
     argument_Dict = vars(argParser.parse_args())
     
     if not argument_Dict['max_count'] is None:
@@ -390,7 +407,7 @@ if __name__ == '__main__':
                     Pattern_File_Generate,
                     file_Path,
                     lj_Text_Dict[file_Path],
-                    token_Index_Dict,
+                    tv,
                     'LJ',
                     '',
                     'LJ {:05d}/{:05d}    Total {:05d}/{:05d}'.format(
@@ -410,7 +427,7 @@ if __name__ == '__main__':
                     Pattern_File_Generate,
                     file_Path,
                     vctk_Text_Dict[file_Path],
-                    token_Index_Dict,
+                    tv,
                     'VCTK',
                     '',
                     'VCTK {:05d}/{:05d}    Total {:05d}/{:05d}'.format(
@@ -430,7 +447,7 @@ if __name__ == '__main__':
                     Pattern_File_Generate,
                     file_Path,
                     ls_Text_Dict[file_Path],
-                    token_Index_Dict,
+                    tv,
                     'LS',
                     '',
                     'LS {:05d}/{:05d}    Total {:05d}/{:05d}'.format(
@@ -470,7 +487,7 @@ if __name__ == '__main__':
                     Pattern_File_Generate,
                     file_Path,
                     bc2013_Text_List_Dict[file_Path],
-                    token_Index_Dict,
+                    tv,
                     'BC2013',
                     '{}.'.format(file_Path.split('/')[-2]),
                     'BC2013 {:05d}/{:05d}    Total {:05d}/{:05d}'.format(
@@ -490,7 +507,7 @@ if __name__ == '__main__':
                     Pattern_File_Generate,
                     file_Path,
                     fv_Text_List_Dict[file_Path],
-                    token_Index_Dict,
+                    tv,
                     'FV',
                     '{}.'.format(fv_Speaker_Dict[file_Path]),
                     'FV {:05d}/{:05d}    Total {:05d}/{:05d}'.format(
@@ -504,4 +521,4 @@ if __name__ == '__main__':
                     )
                 total_Generated_Pattern_Count += 1
 
-    Metadata_Generate(token_Index_Dict)
+    Metadata_Generate()
