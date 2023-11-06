@@ -3,7 +3,8 @@ from random import sample
 
 def Get_Path(sample_count= 50):
     path_List = [
-        ('LJ(F)', '../LJSpeech-1.1/wavs'),
+        ('VCTK', os.path.expanduser('~/VCTK/VCTK-Corpus/VCTK-Corpus/wav48/p280')),
+        # ('LJ(F)', '../LJSpeech-1.1/wavs'),
         ('CLB(F)', 'Pattern/ENG/FastVox/cmu_us_clb_arctic/wav'),
         ('SLT(F)', 'Pattern/ENG/FastVox/cmu_us_slt_arctic/wav'),
         ('AWB(M)', 'Pattern/ENG/FastVox/cmu_us_awb_arctic/wav'),

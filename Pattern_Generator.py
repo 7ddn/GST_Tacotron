@@ -88,8 +88,6 @@ def Pattern_File_Generate(path, text, token_Index_Dict, dataset, file_Prefix='',
         print('[{}]'.format(display_Prefix), '{}'.format(path), '->', 'Ignored because of length.')
         return
     
-    if (mel.shape[0] % factor != 0):
-        mel = np.pad(mel, ((0, factor - mel.shape[0] % factor), (0, 0)))   
     spect = Spectrogram_Generate(path, top_db, range_Ignore)
 
     token = np.array(

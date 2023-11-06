@@ -95,43 +95,36 @@ def get_mel(wav, sr = 16000, frame_length = 160, frame_step = 80, factor = 1):
     mel.set_shape(sp.shape[:-1].concatenate(mat.shape[-1:]))
     log_mel = tf.math.log(mel + 1e-6)
     # print(log_mel.shape)
-    log_mel = tf.reshape(log_mel, [-1, factor, num_bins])
+    log_mel = tf.reshape(log_mel, [-1, num_bins])
     # print(log_mel.shape)
     return log_mel#[:-1, :]
 
 class PPG_CNN(tf.keras.Model):
-    def __init__(self, tokenizer):
+    def __init__(self, tokenizer, factor = 4, mel_dims = 80):
         super().__init__()
         self.tokenizer = tokenizer
-        conv_fil = [32, 32, 64, 64, 128, 128]
-        conv_kernel = [3, 3, 3, 3, 3, 3]
-        conv_stride = [2, 2, 2, 2, 2, 2]
-
-        self.conv_layers = []
-        for filters, kernel_size, strides in zip(conv_fil, conv_kernel, conv_stride):
-            self.conv_layers.append(tf.keras.layers.Conv2D(
-                filters = filters,
-                kernel_size = kernel_size,
-                strides = strides,
-                padding = 'same',
-                use_bias = False
-            ))
-            self.conv_layers.append(tf.keras.layers.BatchNormalization())
-            self.conv_layers.append(tf.keras.layers.ReLU())
-        self.Output = tf.keras.models.Sequential(
-            [tf.keras.layers.Flatten(),
-            tf.keras.layers.Dense(64),
-            tf.keras.layers.ReLU(),
-            tf.keras.layers.Dense(tokenizer.vocabulary_size()),
-            tf.keras.layers.Softmax(axis = -1)]
-        )
-    def call(self, spec):
+        self.factor = factor
+        self.mel_dims = mel_dims
+        dense_units = 512
+            # tf.keras.layers.Flatten(),
+        self.bidir = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(units = 128, return_sequences=True))
+        self.dense_0 = tf.keras.layers.Dense(units = dense_units, activation = 'relu')
+        # tf.keras.layers.Reshape([-1, self.factor * dense_units])
+        self.avg_pool = tf.keras.layers.AveragePooling1D(pool_size = self.factor, strides = self.factor, padding = 'same')
+        self.lstm = tf.keras.layers.LSTM(units = 128, return_sequences=True)
+        self.output_dense = tf.keras.layers.Dense(units = self.tokenizer.vocabulary_size(), activation = 'relu')
+        self.softmax = tf.keras.layers.Softmax(axis = -1)
+    def call(self, mel):
         # spec shape [batch_size, num_frames + 1, fft_size]
-        new_tensor = tf.expand_dims(spec, axis = -1)
-        for layer in self.conv_layers:
-            new_tensor = layer(new_tensor)
-        new_tensor = self.Output(new_tensor)
-        return new_tensor
+        new_Tensor = self.bidir(mel)
+        new_Tensor = self.dense_0(new_Tensor)
+        new_Tensor = self.avg_pool(new_Tensor)
+        new_Tensor = self.lstm(new_Tensor)
+        new_Tensor = self.output_dense(new_Tensor)
+        new_Tensor = self.softmax(new_Tensor)      
+
+        
+        return new_Tensor   
 
 def init_ds():
     
@@ -160,9 +153,9 @@ def init_ds():
 
     train_ds, val_ds, test_ds = split_dataset(token_ds)
 
-    train_ds = train_ds#.batch(32)
-    val_ds = val_ds#.batch(32)
-    test_ds = test_ds#.batch(32)
+    train_ds = train_ds.padded_batch(32)
+    val_ds = val_ds.padded_batch(32)
+    test_ds = test_ds.padded_batch(32)
 
     print('Dataset Generated:\n Training Dataset Size: {train_size}\n Validation Dataset Size: {val_size}\n Test Dataset Size: {test_size}'.format(
         train_size = len(train_ds), val_size = len(val_ds), test_size = len(test_ds)))
@@ -175,7 +168,7 @@ def train_model(masked_token = None):
        masked_token = None
     '''
 
-    @tf.function
+    # @tf.function
     def if_masked(token):
         # print(token)
         # print(f'token.dtype: {token.dtype}, masked_token.dtype: {masked_token.dtype}')
@@ -194,7 +187,8 @@ def train_model(masked_token = None):
         loss_fn = tf.keras.losses.SparseCategoricalCrossentropy(reduction = 'none')
          
         loss = loss_fn(y_truth, y_pred)
-        mask = tf.map_fn(fn = if_masked, elems = y_truth)
+        # mask = tf.map_fn(fn = if_masked, elems = y_truth)
+        mask = y_truth != 0
         mask = tf.cast(mask, loss.dtype) 
         
         loss = loss*mask
@@ -212,8 +206,9 @@ def train_model(masked_token = None):
         # y_truth shape [batch_size, num_frames]    
 
         y_truth = tf.cast(y_truth, tf.int64)
-        mask = tf.map_fn(fn = if_masked, elems = y_truth)
-        # mask = y_truth not in masked_token
+        # mask = tf.map_fn(fn = if_masked, elems = y_truth)
+        
+        mask = tf.cast(y_truth != 0, dtype = tf.int64)
         p_pred = tf.cast(tf.math.argmax(y_pred, axis = -1), tf.int64)
         match = tf.cast(p_pred == tf.squeeze(y_truth), tf.int64)
         # print(f'{tf.shape(y_truth)}, {tf.shape(match)}, {tf.shape(mask)}')
@@ -222,8 +217,9 @@ def train_model(masked_token = None):
         
         return acc
 
+    model.compile(optimizer = 'adam', loss = 'sparse_categorical_crossentropy', metrics = 'acc')
     # model.compile(optimizer = 'adam', loss = 'sparse_categorical_crossentropy', metrics = 'sparse_categorical_accuracy')
-    model.compile(optimizer = 'adam', loss = masked_loss, metrics = masked_acc) 
+    # model.compile(optimizer = 'adam', loss = masked_loss, metrics = masked_acc) 
 
 
     checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
@@ -243,8 +239,7 @@ def train_model(masked_token = None):
     model.evaluate(test_ds) 
 
 def eval_model(token_layer):
-    model = PPG_CNN(tokenizer=token_layer)
-    cp_dir = './checkpoints'
+    cp_dir = './ppg/checkpoints'
     latest = tf.train.latest_checkpoint(cp_dir)
     if latest is not None:
         print(f'Found latest checkpoint at {latest}')
@@ -259,11 +254,14 @@ def eval_model(token_layer):
 
     for sample in test_ds:
         # print(sample)
-        mel, token = sample
+        mels, tokens = sample
         break
-    print('successfully taken 1 sample from test dataset')
+    print('successfully taken a batch of sample from test dataset')
+    
+    mel = tf.expand_dims(mels[0], 0)
+    token = tokens[0]
 
-    pred = model(mel)
+    pred = tf.squeeze(model(mel))
     ph_pred = [dict[i.numpy()] for i in tf.argmax(pred, axis=-1)]
 
     ph_truth = [dict[int(i)] for i in token.numpy()]
@@ -294,14 +292,15 @@ if mode == 'train':
     token_layer, ds = init()
     # vocab = token_layer.get_vocabulary()
 
-    masked_token = tf.cast(token_layer('sil')[0], dtype = tf.int64)
-
+    # masked_token = tf.cast(token_layer('sil')[0], dtype = tf.int64)
+    masked_token = None
     train_ds, val_ds, test_ds = init_ds()
-    model = PPG_CNN(tokenizer = token_layer)
+    model = PPG_CNN(tokenizer = token_layer, factor = factor)
     train_model(masked_token = masked_token)
 
 elif mode == 'eval':
     token_layer, ds = init()
     train_ds, val_ds, test_ds = init_ds()
+    model = PPG_CNN(tokenizer=token_layer, factor = factor)
     eval_model(token_layer = token_layer)
 

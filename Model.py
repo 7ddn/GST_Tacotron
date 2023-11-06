@@ -1,7 +1,10 @@
 import tensorflow as tf
+
 from tensorflow.keras import mixed_precision
 import numpy as np
 import json, os, time, argparse
+os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
+
 from threading import Thread
 import matplotlib
 matplotlib.use('agg')
@@ -248,7 +251,7 @@ class GST_Tacotron:
 
         return loss
 
-    # @tf.function
+    @tf.function
     def Inference_Step(self, tokens, token_lengths, initial_mels, mels_for_gst= None, mel_lengths_for_gst= None):
         mel_Logits, stop_Logits, spectrogram_Logits, alignments = self.model_Dict['Inference'](
             inputs= [initial_mels, tokens] + ([mels_for_gst, mel_lengths_for_gst] if hp_Dict['GST']['Use'] else []),
@@ -311,7 +314,7 @@ class GST_Tacotron:
 
         def Run_GST_Inference():
             from Get_Path import Get_Path
-            wav_List, tag_List = Get_Path(100)
+            wav_List, tag_List = Get_Path(1)
             self.Inference_GST(wav_List, tag_List)
 
         # Save_Checkpoint()        
@@ -330,7 +333,7 @@ class GST_Tacotron:
                 'Step: {}'.format(self.optimizer.iterations.numpy()),
                 # 'LR: {:0.5f}'.format(self.optimizer.lr(self.optimizer.iterations.numpy() - 1)),
                 # Testing
-                # 'LR: {:0.5f}'.format(self.optimizer.lr.numpy()),
+                'LR: {:0.5f}'.format(self.optimizer.lr.numpy()),
                 'Loss: {:0.5f}'.format(loss),
                 ]
             print('\t\t'.join(display_List))
@@ -459,11 +462,19 @@ class GST_Tacotron:
         title_Column_List = ['Wav', 'Tag'] + ['Unit_{}'.format(x) for x in range(gst_List[0].shape[0])]
         export_List = ['\t'.join(title_Column_List)]
         for wav_Path, tag, gst in zip(wav_List, tag_List, gst_List):
-            # print(f'wav_Path: {wav_Path}, tag: {tag}, gst shape: {gst.shape}')
-            # print([x for x in gst])
-            new_Line_List = [wav_Path, tag] + [x for x in gst]
-            new_Line_List = ['{}'.format(x) for x in new_Line_List]
-            export_List.append('\t'.join(new_Line_List))
+            print('new line')
+            print(f'wav_Path: {wav_Path}, tag: {tag}, gst shape: {gst.shape}')
+            print([wav_Path, tag])
+            try: 
+                new_Line_List = [wav_Path, tag] + [x for x in gst]
+                new_Line_List = ['{}'.format(x) for x in new_Line_List]
+                export_List.append('\t'.join(new_Line_List))
+            except:
+                pass
+                #print('Failed!')
+                #continue
+            # else: 
+                #print('Succeeded\n')
 
         with open(os.path.join(hp_Dict['Inference_Path'], 'GST', '{}.GST.TXT'.format(label)).replace("\\", "/"), 'w') as f:
             f.write('\n'.join(export_List))

@@ -21,6 +21,7 @@ parser.add_argument('--dir')
 parser.add_argument('--sr')
 parser.add_argument('--frame_step')
 parser.add_argument('--frame_length')
+# parser.add_argument(['-c', '--continue'], action = 'store_false')
 
 args = parser.parse_args()
 mode = args.mode
@@ -108,14 +109,14 @@ class PPG_CNN(tf.keras.Model):
             # tf.keras.layers.MaxPool1D(),
             # tf.keras.layers.Dropout(0.1),
             tf.keras.layers.Flatten(),
-            tf.keras.layers.Dense(512, activation='relu'),
-            tf.keras.layers.Dropout(0.2),
-            tf.keras.layers.Dense(1024, activation='relu'),
-            tf.keras.layers.Dropout(0.2),
-            tf.keras.layers.Dense(256, activation='relu'),
-            tf.keras.layers.Dropout(0.2),
-            tf.keras.layers.Dense(64, activation='sigmoid'),
-            tf.keras.layers.Dropout(0.2),
+            tf.keras.layers.LayerNormalization(),
+            tf.keras.layers.Dense(512, activation='relu', use_bias = False),
+            tf.keras.layers.Dropout(0.1),
+            tf.keras.layers.Dense(1024, activation='relu', use_bias = False),
+            tf.keras.layers.Dropout(0.1),
+            tf.keras.layers.Dense(256, activation='relu', use_bias = False),
+            tf.keras.layers.Dropout(0.1),
+            tf.keras.layers.Dense(64, activation='sigmoid', use_bias = False),
             tf.keras.layers.Dense(tokenizer.vocabulary_size()),
             tf.keras.layers.Softmax(axis = -1)])
 
@@ -141,7 +142,7 @@ class PPG_CNN(tf.keras.Model):
         
 def init_ds():
     
-    token_ds = ds.map(lambda wav, phone, speaker, filename: (get_mel(wav, frame_length=frame_length, frame_step=frame_step, sr = sr, factor=factor), token_layer(phone)))#.map(lambda mel, token: (mel[:min(mel.shape[0], token.shape[0])], token[min(mel.shape[0], token.shape[0])]))
+    token_ds = ds.map(lambda wav, phone, speaker, filename: (get_mel(wav, frame_length=frame_length, frame_step=frame_step, sr = sr, factor=factor), token_layer(phone)[:, 0]))#.map(lambda mel, token: (mel[:min(mel.shape[0], token.shape[0])], token[min(mel.shape[0], token.shape[0])]))
 
 
     def split_dataset(ds, ds_size=None, train_split = 0.8, val_split = 0.1, test_split = 0.1, shuffle = True, shuffle_size = 10000):
@@ -175,33 +176,62 @@ def init_ds():
 
     return train_ds, val_ds, test_ds
 
-def train_model():
-    def ppg_loss(y_truth, y_pred):
+def train_model(masked_token = None):
+    '''
+    if masked_token is None:
+       masked_token = None
+    '''
+
+    @tf.function
+    def if_masked(token):
+        # print(token)
+        # print(f'token.dtype: {token.dtype}, masked_token.dtype: {masked_token.dtype}')
+        # token = tf.cast(token, masked_token.dtype) 
+        if token == masked_token: # or token[0] == masked_token:
+            return tf.constant(0, dtype = tf.int64)
+        else: 
+            return tf.constant(1, dtype = tf.int64)
+    
+
+    def masked_loss(y_truth, y_pred):
         # y_pred ppg shape [batch_size, num_frames, num_phoneme]
         # y_truth shape [batch_size, num_frames]
         loss = 0.    
 
-        loss_fn = tf.keras.losses.SparseCategoricalCrossentropy()
+        loss_fn = tf.keras.losses.SparseCategoricalCrossentropy(reduction = 'none')
+         
+        loss = loss_fn(y_truth, y_pred)
+        mask = tf.map_fn(fn = if_masked, elems = y_truth)
+        mask = tf.cast(mask, loss.dtype) 
+        
+        loss = loss*mask
+        loss = tf.reduce_sum(loss)/tf.reduce_sum(mask)
         # for y_t, y_p in zip(y_truth, y_pred):
             # loss = loss + loss_fn(y_truth, y_pred) 
         # print(len(y_truth))
         # print(len(y_pred))
         # min_len = min(y_truth.shape[0], y_pred.shape[0])    
 
-        loss = loss_fn(y_truth, y_pred)
         return loss
 
-    def ppg_acc(y_truth, y_pred):
+    def masked_acc(y_truth, y_pred):
         # y_pred ppg shape [batch_size, num_frames, num_phoneme]
         # y_truth shape [batch_size, num_frames]    
 
-        p_pred = tf.cast(tf.math.argmax(y_pred), tf.int32)
-        y_truth = tf.cast(y_truth, tf.int32)
-        match = tf.cast(p_pred == y_truth, tf.float32)
+        y_truth = tf.cast(y_truth, tf.int64)
+        mask = tf.map_fn(fn = if_masked, elems = y_truth)
+        # mask = y_truth not in masked_token
+        p_pred = tf.cast(tf.math.argmax(y_pred, axis = -1), tf.int64)
+        match = tf.cast(p_pred == tf.squeeze(y_truth), tf.int64)
+        # print(f'{tf.shape(y_truth)}, {tf.shape(match)}, {tf.shape(mask)}')
+        masked_match = match * mask
+        acc = tf.reduce_sum(masked_match)/tf.reduce_sum(mask)
         
-        return tf.reduce_mean(match)
+        return acc
 
-    model.compile(optimizer = 'adam', loss = 'sparse_categorical_crossentropy', metrics = 'sparse_categorical_accuracy')
+    # model.compile(optimizer = 'adam', loss = 'sparse_categorical_crossentropy', metrics = 'sparse_categorical_accuracy')
+    model.compile(optimizer = 'adam', loss = masked_loss, metrics = masked_acc) 
+
 
     checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
         filepath = './ppg/checkpoints/ckp.{epoch:02d}',
@@ -266,13 +296,16 @@ def eval_model(token_layer):
     
 
     plt.savefig(f'{time.strftime("%Y%m%d%H%M%S")}.png', dpi=400)
-    
 
 if mode == 'train':
     token_layer, ds = init()
+    # vocab = token_layer.get_vocabulary()
+
+    masked_token = tf.cast(token_layer('sil')[0], dtype = tf.int64)
+
     train_ds, val_ds, test_ds = init_ds()
     model = PPG_CNN(tokenizer = token_layer)
-    train_model()
+    train_model(masked_token = masked_token)
 
 elif mode == 'eval':
     token_layer, ds = init()

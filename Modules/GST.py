@@ -63,7 +63,7 @@ class Reference_Encoder(tf.keras.Model):
         token_layer = tf.keras.layers.TextVectorization.from_config(from_disk['config'])
         token_layer.set_weights(from_disk['weights'])
 
-        ppg_layer = PPG_CNN(token_layer)
+        ppg_layer = PPG_CNN(token_layer, factor = 8)
         ppg_layer.trainable = False
         cp_dir = './ppg/checkpoints'
         latest = tf.train.latest_checkpoint(cp_dir)
@@ -82,37 +82,13 @@ class Reference_Encoder(tf.keras.Model):
         mel_lengths: [Batch]
         '''
         mels, mel_lengths = inputs
-        batch = tf.shape(mel_lengths)[0]
-        # print(f'batch size is {batch}')
-
-        mels_len = mels.get_shape()[1]
-        if mels_len is None:
-            mels_len = tf.constant(0, tf.int32)
-        '''
-        factor = tf.constant(4, tf.int32) # TODO: put this in the hyperparameters::
-        # print(f'shape before reshape: {mels.get_shape()}')
-        # print(f'mels_len is {mels_len}')
         
-        # pad the tensor to fit the factor
-        padding = tf.cast(tf.math.ceil(tf.divide(mels_len, factor)), tf.int32) * factor - mels_len
-        # print(f'padding is :{padding}')
-        paddings = tf.convert_to_tensor([[0, 0,], [0, padding,], [0, 0]])
-        mels = tf.pad(mels, paddings)
-        # print(f'shape after padding: {mels.get_shape()}')
-        '''
-    
-        mels = tf.reshape(mels, [-1, 4, 80]) #[Batch * Time / 4, 4 * Mel_Dim]
-        # print(batch)
-        # print(f'shape after reshape :{mels.get_shape()}')        
         ppgs = self.layer_Dict['PPG'](mels) #[Batch, Time, PPG_Dim]
-        # print(self.layer_Dict['PPG'].summary())
-        # print(f'ppg shape :{ppgs.get_shape()}')
 
-        ppgs = tf.reshape(ppgs, [batch, -1, self.ppg_dim])     
-        
-        new_Tensor = self.layer_Dict['Dense_1'](ppgs)
+        new_Tensor = self.layer_Dict['Dense_1'](ppgs) #[Batch, Time, Mel_Dim]
+        # This dense layer only use for adapting the original tensor shapes
     
-        new_Tensor = tf.expand_dims(new_Tensor, axis= -1)   #[Batch, Time, PPG_Dim, 1]
+        new_Tensor = tf.expand_dims(new_Tensor, axis= -1)   #[Batch, Time, Mel_Dim, 1]
         
 
         #new_Tensor = tf.expand_dims(mels, axis= -1)   #[Batch, Time, Mel_Dim, 1]

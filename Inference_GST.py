@@ -1,4 +1,8 @@
 from Model import GST_Tacotron
+
+def remove_letter(text):
+    return tf.strings.regex_replace(text, f'[0-9]', '')
+
 gst_taco = GST_Tacotron(is_Training=False)
 
 gst_taco.Restore()
@@ -7,7 +11,7 @@ language_List = ['japanese', 'english', 'german', 'portuguese', 'polish', 'frenc
 language_Number = [27, 579, 36, 48, 34, 63, 37, 65]
 
 # ban_list = ['turkish', 'english']
-allow_list = ['english', 'mandarin']
+allow_list = ['japanese', 'mandarin']
 
 wav_List = []
 tag_List = []

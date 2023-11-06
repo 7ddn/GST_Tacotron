@@ -100,46 +100,51 @@ def get_mel(wav, sr = 16000, frame_length = 160, frame_step = 80, factor = 1):
     return log_mel#[:-1, :]
 
 class PPG_CNN(tf.keras.Model):
-    def __init__(self, tokenizer):
+    def __init__(self, tokenizer, factor = 4, mel_dim = 80):
         super().__init__()
+        self.factor = factor
+        self.mel_dim = mel_dim
         self.tokenizer = tokenizer
-        self.frame_model = tf.keras.models.Sequential([
-            # tf.keras.layers.Conv1D(64, 2, activation='relu'),
-            # tf.keras.layers.Conv1D(32, 2, activation='relu'),
-            # tf.keras.layers.MaxPool1D(),
-            # tf.keras.layers.Dropout(0.1),
-            tf.keras.layers.Flatten(),
-            tf.keras.layers.Dense(512, activation='relu'),
-            tf.keras.layers.Dropout(0.2),
-            tf.keras.layers.Dense(1024, activation='relu'),
-            tf.keras.layers.Dropout(0.2),
-            tf.keras.layers.Dense(256, activation='relu'),
-            tf.keras.layers.Dropout(0.2),
-            tf.keras.layers.Dense(64, activation='sigmoid'),
-            tf.keras.layers.Dropout(0.2),
-            tf.keras.layers.Dense(tokenizer.vocabulary_size()),
-            tf.keras.layers.Softmax(axis = -1)])
+        conv_fil = [32, 32, 64, 64, 128, 128]
+        conv_kernel = [3, 3, 3, 3, 3, 3]
+        conv_stride = [2, 2, 2, 2, 2, 2]
 
-    def call(self, spec):
-        '''
-        # spec shape [batch_size, num_frames + 1, fft_size]
-        ppg_frames = []
-        #for spec in spec_batch:
-        for i in tf.range(spec.shape[0]-1):
-            frame = self.frame_model(tf.slice(spec,[i, 0], [i+2, tf.shape(spec)[1]]))
-            # frame shape [2, fft_size]
-            ppg_frames.append(self.frame_model(frame))
-            # ppg_frame shape [1, num_phoneme]
-            
-        # ppg = tf.concat(ppg_frames, axis = 1)
+        self.conv_layers = []
+        for filters, kernel_size, strides in zip(conv_fil, conv_kernel, conv_stride):
+            self.conv_layers.append(tf.keras.layers.Conv2D(
+                filters = filters,
+                kernel_size = kernel_size,
+                strides = strides,
+                padding = 'same',
+                use_bias = False
+            ))
+            self.conv_layers.append(tf.keras.layers.BatchNormalization())
+            self.conv_layers.append(tf.keras.layers.ReLU())
+        self.rnn_layer = tf.keras.layers.GRU(units = 128, return_sequences = True)
         
+        self.Output = tf.keras.models.Sequential(
+            [tf.keras.layers.Dense(units = self.tokenizer.vocabulary_size()),
+            tf.keras.layers.Softmax(axis = -1)]
+        )
+    def call(self, mel):
+        # mel shape [Time_Step, factor, mel_dim]
+        
+        new_tensor = tf.reshape(mel, [1, -1, self.factor ,self.mel_dim])
+        # input shape [Batch_Size(1), Time_Step, Factor*Mel_Dim, 1]    
+           
+        for layer in self.conv_layers:
+            new_tensor = layer(new_tensor)
+        
+        batch_size, time_step = tf.shape(new_tensor)[0], tf.shape(new_tensor)[1]
+        height, width = new_tensor.get_shape().as_list()[2:]
+        
+        conv_output =  tf.reshape(new_tensor, [batch_size, time_step, height*width])
+
+        rnn_output = self.rnn_layer(conv_output)
+
+        ppg = self.Output(rnn_output)
         return ppg
-        '''
-        
-        # spec = spec[tf.newaxis, ...]
-        # print(spec.shape)
-        return self.frame_model(spec)
-        
+
 def init_ds():
     
     token_ds = ds.map(lambda wav, phone, speaker, filename: (get_mel(wav, frame_length=frame_length, frame_step=frame_step, sr = sr, factor=factor), token_layer(phone)[:, 0]))#.map(lambda mel, token: (mel[:min(mel.shape[0], token.shape[0])], token[min(mel.shape[0], token.shape[0])]))
