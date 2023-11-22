@@ -2,8 +2,8 @@
     "Sound": {
         "Spectrogram_Dim": 513,
         "Mel_Dim": 80,
-	"Frame_Length": 160,
-        "Frame_Shift": 40,
+	"Frame_Length": 1024,
+        "Frame_Shift": 320,
         "Sample_Rate": 16000,
         "Max_Abs_Mel": 4
     },
@@ -162,11 +162,11 @@
     "Train": {
         "Pattern_Path": "Pattern/VCTK",
         "Metadata_File": "METADATA.PICKLE",
-        "Batch_Size": 5,
+        "Batch_Size": 50,
         "Pattern_Sorting": true,
         "Min_Wav_Length": 500,
         "Max_Wav_Length": 10000,
-        "Max_Pattern_Queue": 5,
+        "Max_Pattern_Queue": 25,
         "Initial_Learning_Rate": 1e-3,
         "Min_Learning_Rate": 1e-5,
         "ADAM": {
@@ -175,8 +175,8 @@
             "Epsilon": 1e-7
         },
         "Use_L2_Loss": true,
-        "Inference_Timing": 1000,
-        "Checkpoint_Save_Timing": 25,
+        "Inference_Timing": 500,
+        "Checkpoint_Save_Timing": 50,
 
         "Sequential_Pattern": false,
         "Initial_Inference": true
@@ -186,7 +186,7 @@
     "Taco_Version": 2,
     "Use_Mixed_Precision": false,
     "Inference_Cut": true,
-    "Inference_Path": "GST.Results/Inference",
-    "Checkpoint_Path": "GST.Results/Checkpoint/VCTK",
+    "Inference_Path": "GST.Results/Inference/VCTK_2023_11_21",
+    "Checkpoint_Path": "GST.Results/Checkpoint/VCTK_2023_11_21",
     "Device": "0"
 }

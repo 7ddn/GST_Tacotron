@@ -386,7 +386,13 @@ class GST_Tacotron:
             alignment = alignment.astype(np.float32)
 
             slice_Index = np.argmax(stop < 0) if any(stop < 0) else stop.shape[0] # Check stop tokens            
-            
+           
+            # Try to force figure end at stop token to make it more clear to see
+            # mel = mel[:slice_Index, :]
+            # spect = mel[:slice_Index, :]
+            # alignment = alignment[:slice_Index, :]            
+
+
             new_Figure = plt.figure(figsize=(24, 6 * 5), dpi=100)
             plt.subplot2grid((5, 1), (0, 0))
             plt.imshow(np.transpose(mel), aspect='auto', origin='lower')
@@ -399,8 +405,6 @@ class GST_Tacotron:
             plt.subplot2grid((5, 1), (2, 0), rowspan=2)
             plt.imshow(np.transpose(alignment), aspect='auto', origin='lower')            
             plt.title('Alignment    Sentence: {}'.format(sentence))
-            # print(f'The sentence is {list(sentence)}, the length is {len(sentence)}')
-            # print(f'Size of alignments: {alignment.shape}')
             plt.yticks(
                 #range(alignment.shape[1]),
                 range(len(sentence)+2),

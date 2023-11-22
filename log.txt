@@ -1,0 +1,110 @@
+2023-11-08 12:37:06.415482: I tensorflow/core/platform/cpu_feature_guard.cc:193] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  AVX2 AVX_VNNI FMA
+To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.
+2023-11-08 12:37:06.473115: I tensorflow/core/util/port.cc:104] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+2023-11-08 12:37:12.256061: I tensorflow/compiler/xla/stream_executor/cuda/cuda_gpu_executor.cc:981] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2023-11-08 12:37:12.262573: I tensorflow/compiler/xla/stream_executor/cuda/cuda_gpu_executor.cc:981] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2023-11-08 12:37:12.262648: I tensorflow/compiler/xla/stream_executor/cuda/cuda_gpu_executor.cc:981] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2023-11-08 12:37:12.269853: I tensorflow/compiler/xla/stream_executor/cuda/cuda_gpu_executor.cc:981] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2023-11-08 12:37:12.269936: I tensorflow/compiler/xla/stream_executor/cuda/cuda_gpu_executor.cc:981] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2023-11-08 12:37:12.269981: I tensorflow/compiler/xla/stream_executor/cuda/cuda_gpu_executor.cc:981] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2023-11-08 12:37:12.528107: I tensorflow/compiler/xla/stream_executor/cuda/cuda_gpu_executor.cc:981] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2023-11-08 12:37:12.528197: I tensorflow/compiler/xla/stream_executor/cuda/cuda_gpu_executor.cc:981] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2023-11-08 12:37:12.528243: I tensorflow/compiler/xla/stream_executor/cuda/cuda_gpu_executor.cc:981] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2023-11-08 12:37:12.528278: W tensorflow/core/common_runtime/gpu/gpu_bfc_allocator.cc:42] Overriding orig_value setting because the TF_FORCE_GPU_ALLOW_GROWTH environment variable is set. Original config value was 0.
+2023-11-08 12:37:12.528294: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1613] Created device /job:localhost/replica:0/task:0/device:GPU:0 with 46696 MB memory:  -> device: 0, name: NVIDIA RTX A6000, pci bus id: 0000:01:00.0, compute capability: 8.6
+WARNING:tensorflow:From /home/hew_zhang/.local/lib/python3.9/site-packages/tensorflow/python/autograph/pyct/static_analysis/liveness.py:83: Analyzer.lamba_check (from tensorflow.python.autograph.pyct.static_analysis.liveness) is deprecated and will be removed after 2023-09-23.
+Instructions for updating:
+Lambda fuctions will be no more assumed to be used in the statement where they are used, or at least in the same block. https://github.com/tensorflow/tensorflow/issues/56089
+Train pattern info 
+ Total pattern count: 43735 
+ Use pattern count: 43574 
+ Excluded pattern count: 161
+Successfully loaded ppg checkpoint from ./ppg/checkpoints/ckp.30
+Model: "model"
+__________________________________________________________________________________________________
+ Layer (type)                   Output Shape         Param #     Connected to                     
+==================================================================================================
+ input_3 (InputLayer)           [(None, None)]       0           []                               
+                                                                                                  
+ input_7 (InputLayer)           [(None, None, 80)]   0           []                               
+                                                                                                  
+ input_2 (InputLayer)           [(None,)]            0           []                               
+                                                                                                  
+ encoder (Encoder)              (None, None, 512)    5530624     ['input_3[0][0]']                
+                                                                                                  
+ style__token__layer (Style_Tok  (None, 128)         1189340     ['input_7[0][0]',                
+ en_Layer)                                                        'input_2[0][0]']                
+                                                                                                  
+ gst__concated__encoder (GST_Co  (None, None, 640)   0           ['encoder[0][0]',                
+ ncated_Encoder)                                                  'style__token__layer[0][0]']    
+                                                                                                  
+ input_1 (InputLayer)           [(None, None, 80)]   0           []                               
+                                                                                                  
+ decoder (Decoder)              ((None, None, 80),   18809234    ['gst__concated__encoder[0][0]', 
+                                 (None, None, 80),                'input_1[0][0]']                
+                                 (None, None),                                                    
+                                 (None, None, None)                                               
+                                )                                                                 
+                                                                                                  
+ input_5 (InputLayer)           [(None, None, 513)]  0           []                               
+                                                                                                  
+ vocoder__taco1 (Vocoder_Taco1)  (None, None, 513)   2786513     ['decoder[0][1]']                
+                                                                                                  
+==================================================================================================
+Total params: 28,315,711
+Trainable params: 27,623,411
+Non-trainable params: 692,300
+__________________________________________________________________________________________________
+Model: "model_1"
+__________________________________________________________________________________________________
+ Layer (type)                   Output Shape         Param #     Connected to                     
+==================================================================================================
+ input_3 (InputLayer)           [(None, None)]       0           []                               
+                                                                                                  
+ input_7 (InputLayer)           [(None, None, 80)]   0           []                               
+                                                                                                  
+ input_2 (InputLayer)           [(None,)]            0           []                               
+                                                                                                  
+ encoder (Encoder)              (None, None, 512)    5530624     ['input_3[0][0]']                
+                                                                                                  
+ style__token__layer (Style_Tok  (None, 128)         1189340     ['input_7[0][0]',                
+ en_Layer)                                                        'input_2[0][0]']                
+                                                                                                  
+ gst__concated__encoder (GST_Co  (None, None, 640)   0           ['encoder[1][0]',                
+ ncated_Encoder)                                                  'style__token__layer[1][0]']    
+                                                                                                  
+ input_1 (InputLayer)           [(None, None, 80)]   0           []                               
+                                                                                                  
+ decoder (Decoder)              ((None, None, 80),   18809234    ['gst__concated__encoder[1][0]', 
+                                 (None, None, 80),                'input_1[0][0]']                
+                                 (None, None),                                                    
+                                 (None, None, None)                                               
+                                )                                                                 
+                                                                                                  
+ vocoder__taco1 (Vocoder_Taco1)  (None, None, 513)   2786513     ['decoder[1][1]']                
+                                                                                                  
+==================================================================================================
+Total params: 28,315,711
+Trainable params: 27,623,411
+Non-trainable params: 692,300
+__________________________________________________________________________________________________
+Model: "model_2"
+__________________________________________________________________________________________________
+ Layer (type)                   Output Shape         Param #     Connected to                     
+==================================================================================================
+ input_7 (InputLayer)           [(None, None, 80)]   0           []                               
+                                                                                                  
+ input_2 (InputLayer)           [(None,)]            0           []                               
+                                                                                                  
+ style__token__layer (Style_Tok  (None, 128)         1189340     ['input_7[0][0]',                
+ en_Layer)                                                        'input_2[0][0]']                
+                                                                                                  
+==================================================================================================
+Total params: 1,189,340
+Trainable params: 508,976
+Non-trainable params: 680,364
+__________________________________________________________________________________________________
+2023-11-08 12:37:19.154227: I tensorflow/compiler/xla/stream_executor/cuda/cuda_dnn.cc:428] Loaded cuDNN version 8100
+2023-11-08 12:37:19.832936: I tensorflow/compiler/xla/stream_executor/cuda/cuda_blas.cc:630] TensorFloat-32 will be used for the matrix multiplication. This will only be logged once.
+WARNING:tensorflow:5 out of the last 5 calls to <function _BaseOptimizer._update_step_xla at 0x7f713837e160> triggered tf.function retracing. Tracing is expensive and the excessive number of tracings could be due to (1) creating @tf.function repeatedly in a loop, (2) passing tensors with different shapes, (3) passing Python objects instead of tensors. For (1), please define your @tf.function outside of the loop. For (2), @tf.function has reduce_retracing=True option that can avoid unnecessary retracing. For (3), please refer to https://www.tensorflow.org/guide/function#controlling_retracing and https://www.tensorflow.org/api_docs/python/tf/function for  more details.
+WARNING:tensorflow:6 out of the last 6 calls to <function _BaseOptimizer._update_step_xla at 0x7f713837e160> triggered tf.function retracing. Tracing is expensive and the excessive number of tracings could be due to (1) creating @tf.function repeatedly in a loop, (2) passing tensors with different shapes, (3) passing Python objects instead of tensors. For (1), please define your @tf.function outside of the loop. For (2), @tf.function has reduce_retracing=True option that can avoid unnecessary retracing. For (3), please refer to https://www.tensorflow.org/guide/function#controlling_retracing and https://www.tensorflow.org/api_docs/python/tf/function for  more details.

@@ -1,5 +1,3 @@
-''' Use a simple CNN for test, should use something like transformer for further research. '''
-
 import tensorflow as tf
 import os
 from tqdm import tqdm
@@ -11,8 +9,11 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+import librosa
 
 import time
+
+from Modules.Word_to_ARPA import str_to_arpa 
 
 parser = argparse.ArgumentParser(description='mode')
 parser.add_argument('--mode', type=str, help='mode of script, train or eval')
@@ -21,7 +22,11 @@ parser.add_argument('--dir')
 parser.add_argument('--sr')
 parser.add_argument('--frame_step')
 parser.add_argument('--frame_length')
+parser.add_argument('--patience')
 # parser.add_argument(['-c', '--continue'], action = 'store_false')
+parser.add_argument('--eval_dir')
+parser.add_argument('--eval_alignment')
+callbacks=[]
 
 args = parser.parse_args()
 mode = args.mode
@@ -45,6 +50,18 @@ if args.frame_length is None:
 else:
     frame_length = int(args.frame_length)
 
+# Checkpoints and EarlyStopping
+
+checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
+    filepath = './ppg/checkpoints/ckp.{epoch:02d}',
+    save_weights_only = True,
+    save_best_only = True,
+    verbose = 1)
+callbacks.append(checkpoint_callback)
+if args.patience is None:
+    pass
+else:
+    callbacks.append(tf.keras.callbacks.EarlyStopping(patience=int(args.patience)))
 
 '''
 # factor = 4
@@ -107,21 +124,24 @@ class PPG_CNN(tf.keras.Model):
         self.mel_dims = mel_dims
         dense_units = 512
             # tf.keras.layers.Flatten(),
+        self.masking = tf.keras.layers.Masking(mask_value=0.)
         self.bidir = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(units = 128, return_sequences=True))
         self.dense_0 = tf.keras.layers.Dense(units = dense_units, activation = 'relu')
         # tf.keras.layers.Reshape([-1, self.factor * dense_units])
         self.avg_pool = tf.keras.layers.AveragePooling1D(pool_size = self.factor, strides = self.factor, padding = 'same')
         self.lstm = tf.keras.layers.LSTM(units = 128, return_sequences=True)
-        self.output_dense = tf.keras.layers.Dense(units = self.tokenizer.vocabulary_size(), activation = 'relu')
-        self.softmax = tf.keras.layers.Softmax(axis = -1)
+        self.output_dense = tf.keras.layers.Dense(units = self.tokenizer.vocabulary_size(), activation = 'softmax')
+        # self.softmax = tf.keras.layers.Softmax(axis = -1)
     def call(self, mel):
         # spec shape [batch_size, num_frames + 1, fft_size]
+        new_Tensor = self.masking(mel)
         new_Tensor = self.bidir(mel)
         new_Tensor = self.dense_0(new_Tensor)
-        new_Tensor = self.avg_pool(new_Tensor)
+        if self.factor != 1:
+            new_Tensor = self.avg_pool(new_Tensor)
         new_Tensor = self.lstm(new_Tensor)
         new_Tensor = self.output_dense(new_Tensor)
-        new_Tensor = self.softmax(new_Tensor)      
+        # new_Tensor = self.softmax(new_Tensor)      
 
         
         return new_Tensor   
@@ -222,18 +242,13 @@ def train_model(masked_token = None):
     # model.compile(optimizer = 'adam', loss = masked_loss, metrics = masked_acc) 
 
 
-    checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
-        filepath = './ppg/checkpoints/ckp.{epoch:02d}',
-        save_weights_only = True,
-        save_best_only = True,
-        verbose = 1)
 
     history = model.fit(
         train_ds,
         epochs = 100,
         validation_data = val_ds,
-        callbacks = [
-            tf.keras.callbacks.EarlyStopping(patience=5), checkpoint_callback])
+        callbacks = callbacks
+    )
 
     print('Evaluating trained model')
     model.evaluate(test_ds) 
@@ -269,24 +284,25 @@ def eval_model(token_layer):
     print(f'prediction: {ph_pred}')
     print(f'ground truth: {ph_truth}')
     #print(token)
-    fig, ax = plt.subplots()
-    ygrid = np.array(dict)
-    xgrid = np.arange(len(pred))
+   
+    def gene_ppg_pic(truth, pred):
+        xgrid = np.arange(pred.shape[0] + 1) + 1
+        ygrid = np.arange(pred.shape[-1] + 1)
+        truth_matrix = np.zeros_like(pred)
+        for i in range(len(truth_matrix)):
+            truth_matrix[i, truth[i]] = 1.0
+        truth_matrix = np.transpose(truth_matrix)
+        pred_matrix = np.transpose(pred)
+        fig, axis = plt.subplots(2,1)
+        axis[0].pcolormesh(xgrid, ygrid, truth_matrix)
+        axis[1].pcolormesh(xgrid, ygrid, pred_matrix)
+        axis[0].set_title('Ground Truth')
+        axis[1].set_title('Prediction')
+        return fig, axis
     
-    xx = []
-    last_ph = ''
-    for i in ph_pred:
-        if i==last_ph:
-            xx.append('')
-        else:
-            xx.append(i)
-            last_ph = i
-    # print(xgrid)
-    ax.pcolormesh(xgrid, ygrid, tf.transpose(pred), shading = 'nearest')
-    plt.xticks(fontsize=8)
-    
+    figs, axis = gene_ppg_pic(token, pred)
 
-    plt.savefig(f'{time.strftime("%Y%m%d%H%M%S")}.png', dpi=400)
+    figs.savefig(f'{time.strftime("%Y%m%d%H%M%S")}.png', dpi=400)
 
 if mode == 'train':
     token_layer, ds = init()
@@ -299,8 +315,74 @@ if mode == 'train':
     train_model(masked_token = masked_token)
 
 elif mode == 'eval':
-    token_layer, ds = init()
-    train_ds, val_ds, test_ds = init_ds()
-    model = PPG_CNN(tokenizer=token_layer, factor = factor)
-    eval_model(token_layer = token_layer)
+    if args.dir is not None and args.eval_dir is None:
+        token_layer, ds = init()
+        train_ds, val_ds, test_ds = init_ds()
+        model = PPG_CNN(tokenizer=token_layer, factor = factor)
+        eval_model(token_layer = token_layer)
+    if args.dir is None and args.eval_dir is not None:
+        wav_dir = os.path.expanduser(args.eval_dir)
+        wav, _ = librosa.load(path = wav_dir, sr = sr)
+        mel = get_mel(wav, sr = sr, frame_length = frame_length, frame_step = frame_step, factor = factor)
+            
+        cp_dir = './ppg/checkpoints'
+        latest = tf.train.latest_checkpoint(cp_dir)
+        if latest is not None:
+            print(f'Found latest checkpoint at {latest}')
+        else:
+            raise Exception('Checkpoint not found')
 
+
+        tv_dict_path = "tv_layer_new.pkl"
+        # TODO: move path to hyperparameter file
+
+        if os.path.isfile(tv_dict_path):
+            from_disk = pickle.load(open(tv_dict_path, "rb"))
+            token_layer = tf.keras.layers.TextVectorization.from_config(from_disk['config'])
+            token_layer.set_weights(from_disk['weights'])
+        else:
+            token_layer = tf.keras.layers.TextVectorization(standardize = remove_letter)
+            token_layer.adapt(ds.map(lambda wav, phone, speaker, filename: phone))
+            pickle.dump({'config':token_layer.get_config(), 'weights': token_layer.get_weights()}, open(tv_dict_path, "wb"))
+
+        print(f'Loaded Vocabulary with length {len(token_layer.get_vocabulary())}')
+     
+ 
+        model = PPG_CNN(tokenizer=token_layer, factor = factor)
+        model.load_weights(latest).expect_partial()
+        
+        print('model is loaded')    
+
+
+        pred = tf.squeeze(model(mel[tf.newaxis, :]))
+
+        alignment = args.eval_alignment
+
+        if alignment is None:
+            filename = os.path.expanduser(args.eval_dir).rsplit('.', 1)[0]
+            if os.path.isfile(filename + '.txt'):
+                alignment = filename + '.txt'
+
+        if alignment is not None:
+            with open(alignment) as file:
+                sentences = file.read()
+
+        
+        def gene_ppg_pic(pred):
+            xgrid = np.arange(pred.shape[0] + 1) + 1
+            ygrid = np.arange(pred.shape[-1] + 1)
+            pred_matrix = np.transpose(pred)
+            fig, axis = plt.subplots()
+            axis.pcolormesh(xgrid, ygrid, pred_matrix)
+            axis.set_title('Prediction')
+            return fig, axis
+         
+        figs, axis = gene_ppg_pic(pred)
+
+        path = f'{time.strftime("%Y%m%d%H%M%S")}.png' 
+
+        figs.savefig(path, dpi=400)
+        print(f'Figure saved at {path}')
+
+    else:
+        raise Exception('No directory of data given')
