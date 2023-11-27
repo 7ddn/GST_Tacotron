@@ -63,7 +63,7 @@ class Reference_Encoder(tf.keras.Model):
         token_layer = tf.keras.layers.TextVectorization.from_config(from_disk['config'])
         token_layer.set_weights(from_disk['weights'])
 
-        ppg_layer = PPG_CNN(token_layer, factor = 8)
+        ppg_layer = PPG_CNN(token_layer, factor = 1)
         ppg_layer.trainable = False
         cp_dir = './ppg/checkpoints'
         latest = tf.train.latest_checkpoint(cp_dir)
@@ -82,9 +82,14 @@ class Reference_Encoder(tf.keras.Model):
         mel_lengths: [Batch]
         '''
         mels, mel_lengths = inputs
-        
+ 
         ppgs = self.layer_Dict['PPG'](mels) #[Batch, Time, PPG_Dim]
 
+        # Apply mask to ppg to make sure padded zeros are also zeros in ppg
+        '''
+        mask = tf.cast(mels == 0.0, ppgs.dtype)[:, :, 0:self.ppg_dim]
+        ppgs = tf.multiply(ppgs, mask)
+        '''
         new_Tensor = self.layer_Dict['Dense_1'](ppgs) #[Batch, Time, Mel_Dim]
         # This dense layer only use for adapting the original tensor shapes
     

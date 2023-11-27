@@ -253,6 +253,33 @@ def train_model(masked_token = None):
     print('Evaluating trained model')
     model.evaluate(test_ds) 
 
+
+def get_compact_prd(pred, vocab = None, given_list = False): # expect probability input
+    
+    if not given_list:
+    
+        if vocab is None:
+            raise Exception('No Vocabulary Given')
+        prd = tf.math.argmax(pred, axis=-1)
+        prd = ' '.join([vocab[i] for i in prd]).split()
+    else:
+        # print(pred)
+        prd = ' '.join(pred).split()
+    
+    prd_compact = []
+    # print(prd)
+    for idx, item in enumerate(prd):
+        if idx!=0:
+            if item == prd[idx-1]:
+                continue
+        if item == 'sil' or item == 'sp' or item == '':
+            continue
+        prd_compact.append(item)
+    prd_compact = ' '.join(prd_compact)
+
+    return prd_compact
+
+
 def eval_model(token_layer):
     cp_dir = './ppg/checkpoints'
     latest = tf.train.latest_checkpoint(cp_dir)
@@ -264,7 +291,7 @@ def eval_model(token_layer):
     
     print('model is loaded')    
 
-    dict = token_layer.get_vocabulary()
+    vocab = token_layer.get_vocabulary()
     print('read dictionary')
 
     for sample in test_ds:
@@ -277,12 +304,12 @@ def eval_model(token_layer):
     token = tokens[0]
 
     pred = tf.squeeze(model(mel))
-    ph_pred = [dict[i.numpy()] for i in tf.argmax(pred, axis=-1)]
+    # ph_pred = [dict[i.numpy()] for i in tf.argmax(pred, axis=-1)]
 
-    ph_truth = [dict[int(i)] for i in token.numpy()]
+    ph_truth = [vocab[int(i)] for i in token.numpy()]
 
-    print(f'prediction: {ph_pred}')
-    print(f'ground truth: {ph_truth}')
+    print(f'prediction: {get_compact_prd(pred, vocab = vocab)}')
+    print(f'ground truth: {get_compact_prd(ph_truth, vocab = vocab, given_list = True)}')
     #print(token)
    
     def gene_ppg_pic(truth, pred):
@@ -315,12 +342,13 @@ if mode == 'train':
     train_model(masked_token = masked_token)
 
 elif mode == 'eval':
+  
     if args.dir is not None and args.eval_dir is None:
         token_layer, ds = init()
         train_ds, val_ds, test_ds = init_ds()
         model = PPG_CNN(tokenizer=token_layer, factor = factor)
         eval_model(token_layer = token_layer)
-    if args.dir is None and args.eval_dir is not None:
+    elif args.dir is None and args.eval_dir is not None:
         wav_dir = os.path.expanduser(args.eval_dir)
         wav, _ = librosa.load(path = wav_dir, sr = sr)
         mel = get_mel(wav, sr = sr, frame_length = frame_length, frame_step = frame_step, factor = factor)
@@ -346,7 +374,8 @@ elif mode == 'eval':
             pickle.dump({'config':token_layer.get_config(), 'weights': token_layer.get_weights()}, open(tv_dict_path, "wb"))
 
         print(f'Loaded Vocabulary with length {len(token_layer.get_vocabulary())}')
-     
+        
+        vocab = token_layer.get_vocabulary()
  
         model = PPG_CNN(tokenizer=token_layer, factor = factor)
         model.load_weights(latest).expect_partial()
@@ -362,11 +391,16 @@ elif mode == 'eval':
             filename = os.path.expanduser(args.eval_dir).rsplit('.', 1)[0]
             if os.path.isfile(filename + '.txt'):
                 alignment = filename + '.txt'
+                print(f'Alignment found at {filename}')
 
         if alignment is not None:
             with open(alignment) as file:
                 sentences = file.read()
-
+                arpa = str_to_arpa(sentences)
+                
+                prd_compact = get_compact_prd(pred, vocab)    
+                print(f'Prediction:\n{prd_compact}\nGround Truth:\n{arpa}')
+                
         
         def gene_ppg_pic(pred):
             xgrid = np.arange(pred.shape[0] + 1) + 1

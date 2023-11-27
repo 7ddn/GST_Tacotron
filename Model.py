@@ -193,6 +193,9 @@ class GST_Tacotron:
             optimizer= self.optimizer,
             model= self.model_Dict['Train']
             )
+        
+        # Only save the best model ever seen
+
 
     # @tf.function(
     #     input_signature=[
