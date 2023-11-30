@@ -186,7 +186,7 @@
     "Taco_Version": 2,
     "Use_Mixed_Precision": false,
     "Inference_Cut": true,
-    "Inference_Path": "GST.Results/Inference/VCTK_2023_11_26_No_MASK",
-    "Checkpoint_Path": "GST.Results/Checkpoint/VCTK_2023_11_26_No_MASK",
+    "Inference_Path": "GST.Results/Inference/VCTK_2023_11_28_MASK",
+    "Checkpoint_Path": "GST.Results/Checkpoint/VCTK_2023_11_28_MASK",
     "Device": "0"
 }

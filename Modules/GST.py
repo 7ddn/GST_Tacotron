@@ -86,10 +86,10 @@ class Reference_Encoder(tf.keras.Model):
         ppgs = self.layer_Dict['PPG'](mels) #[Batch, Time, PPG_Dim]
 
         # Apply mask to ppg to make sure padded zeros are also zeros in ppg
-        '''
+        
         mask = tf.cast(mels == 0.0, ppgs.dtype)[:, :, 0:self.ppg_dim]
         ppgs = tf.multiply(ppgs, mask)
-        '''
+        
         new_Tensor = self.layer_Dict['Dense_1'](ppgs) #[Batch, Time, Mel_Dim]
         # This dense layer only use for adapting the original tensor shapes
     
