@@ -13,7 +13,11 @@ import librosa
 
 import time
 
-from Word_to_ARPA import str_to_arpa 
+from importlib.util import find_spec
+if find_spec("Modules") is not None:
+    from Modules.Word_to_ARPA import str_to_arpa 
+else:
+    from Word_to_ARPA import str_to_arpa
 
 parser = argparse.ArgumentParser(description='mode')
 parser.add_argument('--mode', type=str, help='mode of script, train or eval')

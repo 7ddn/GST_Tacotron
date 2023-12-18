@@ -47,18 +47,10 @@ class Reference_Encoder(tf.keras.Model):
             units= hp_Dict['GST']['Reference_Encoder']['Dense']['Size'],
             activation= 'tanh'
             )
-       
-        self.layer_Dict['Dense_1'] = tf.keras.layers.Dense(
-            units = hp_Dict['Sound']['Mel_Dim'], 
-            activation= 'relu'
-        ) 
-        # Goal: Use PPG, instead of raw mel, to feed reference encoder
-
+    
         tv_dict_path = "tv_layer_new.pkl"
 
         # TODO: move path to hp file
-
-        
         from_disk = pickle.load(open(tv_dict_path, "rb"))
         token_layer = tf.keras.layers.TextVectorization.from_config(from_disk['config'])
         token_layer.set_weights(from_disk['weights'])
@@ -73,7 +65,33 @@ class Reference_Encoder(tf.keras.Model):
         print(f'Successfully loaded ppg checkpoint from {latest}') 
 
         self.ppg_dim = len(token_layer.get_vocabulary())
+   
+        # Use a resnet style skip connection to avoid ppg sparse issues
+        for num in range(hp_Dict['GST']['Reference_Encoder']['SkipConnection']['Numbers']):
+            depth = len(hp_Dict['GST']['Reference_Encoder']['SkipConnection']['Sizes'])
+            for index, units in enumerate(hp_Dict['GST']['Reference_Encoder']['SkipConnection']['Sizes']):
+                self.layer_Dict[f'Skip_Dense_{num*(depth+1)+index}'] = tf.keras.layers.Dense(
+                    units = units,
+                    activation = 'relu',
+                    # use_bias = False
+                )
+            self.layer_Dict[f'Skip_Dense_{num*(depth+1)+index+1}'] = tf.keras.layers.Dense(
+                    units = self.ppg_dim,
+                    activation = 'relu',
+                    # use_bias = False
+                )
+                
 
+        # Remake dim to Mel_Dim
+        self.layer_Dict['Dense_Dim'] = tf.keras.layers.Dense(
+            units = hp_Dict['Sound']['Mel_Dim'], 
+            activation= 'relu'
+            # use_bias = False
+        ) 
+        # Goal: Use PPG, instead of raw mel, to feed reference encoder
+
+
+        
     def call(self, inputs):
         '''
 
@@ -90,7 +108,14 @@ class Reference_Encoder(tf.keras.Model):
         mask = tf.cast(mels == 0.0, ppgs.dtype)[:, :, 0:self.ppg_dim]
         ppgs = tf.multiply(ppgs, mask)
         
-        new_Tensor = self.layer_Dict['Dense_1'](ppgs) #[Batch, Time, Mel_Dim]
+        for num in range(hp_Dict['GST']['Reference_Encoder']['SkipConnection']['Numbers']): 
+            new_Tensor = ppgs
+            for index in range(len(hp_Dict['GST']['Reference_Encoder']['SkipConnection']['Sizes'])+1):
+                new_Tensor = self.layer_Dict[f'Skip_Dense_{index}'](new_Tensor)
+            new_Tensor += ppgs
+            ppgs = new_Tensor
+
+        new_Tensor = self.layer_Dict['Dense_Dim'](new_Tensor) #[Batch, Time, Mel_Dim]
         # This dense layer only use for adapting the original tensor shapes
     
         new_Tensor = tf.expand_dims(new_Tensor, axis= -1)   #[Batch, Time, Mel_Dim, 1]

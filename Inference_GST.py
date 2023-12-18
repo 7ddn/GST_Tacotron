@@ -1,4 +1,5 @@
 from Model import GST_Tacotron
+import os
 
 def remove_letter(text):
     return tf.strings.regex_replace(text, f'[0-9]', '')
@@ -11,20 +12,25 @@ language_List = ['japanese', 'english', 'german', 'portuguese', 'polish', 'frenc
 language_Number = [27, 579, 36, 48, 34, 63, 37, 65]
 
 # ban_list = ['turkish', 'english']
-allow_list = ['japanese', 'mandarin']
+ban_list = None
+# allow_list = ['japanese', 'mandarin']
+allow_list = None
 
-wav_List = []
-tag_List = []
+# wav_List = []
+# tag_List = []
 for idx, l in enumerate(language_List):
-    if not l in allow_list:
+    
+    if ban_list is not None and l in ban_list:
         continue
-    wav_List += [
-        '../accented_speech_archive/wavs/' + l + str(i) + '.mp3.wav' for i in range(1, language_Number[idx])]
+    elif allow_list is not None and l not in allow_list:
+        continue
 
-    tag_List += [
-        l for i in range(1, language_Number[idx])]
+    wav_List = [
+        os.path.expanduser('~/accented_speech_archive/wavs/') + l + str(i) + '.mp3.wav' for i in range(1, language_Number[idx])]
 
-print(wav_List)
-print(tag_List)
+    tag_List = [
+        l for _ in range(1, language_Number[idx])]
 
-gst_taco.Inference_GST(wav_List, tag_List)
+    print(f'Starting inference GST for language {l}, number of utterances is {len(wav_List)}')
+
+    gst_taco.Inference_GST(wav_List, tag_List)

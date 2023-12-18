@@ -469,9 +469,11 @@ class GST_Tacotron:
         title_Column_List = ['Wav', 'Tag'] + ['Unit_{}'.format(x) for x in range(gst_List[0].shape[0])]
         export_List = ['\t'.join(title_Column_List)]
         for wav_Path, tag, gst in zip(wav_List, tag_List, gst_List):
+            '''
             print('new line')
             print(f'wav_Path: {wav_Path}, tag: {tag}, gst shape: {gst.shape}')
             print([wav_Path, tag])
+            '''
             try: 
                 new_Line_List = [wav_Path, tag] + [x for x in gst]
                 new_Line_List = ['{}'.format(x) for x in new_Line_List]
