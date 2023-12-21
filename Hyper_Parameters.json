@@ -27,8 +27,11 @@
                 "Size": 128
             },
 	    "SkipConnection": {
-		"Numbers": 2,
+		"Numbers": 1,
 		"Sizes": [128, 256, 128]
+	    },
+	    "PPG_RNN": {
+		"Size": 128
 	    }
         },
         "Style_Token": {
@@ -190,7 +193,7 @@
     "Taco_Version": 2,
     "Use_Mixed_Precision": false,
     "Inference_Cut": true,
-    "Inference_Path": "GST.Results/Inference/2023-12-14-Skip-Connection-Double",
-    "Checkpoint_Path": "GST.Results/Checkpoint/2023-12-14-Skip-Connection-Double",
+    "Inference_Path": "GST.Results/Inference/2023-12-20-Skip-Connection-RNN",
+    "Checkpoint_Path": "GST.Results/Checkpoint/2023-12-20-Skip-Connection-RNN",
     "Device": "0"
 }
