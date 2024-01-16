@@ -173,6 +173,8 @@ GST.Results/
 accentdb/
 data/
 *.png
+*bak*
+
 
 # vim cache
 *.swp

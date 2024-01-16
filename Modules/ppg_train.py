@@ -18,54 +18,54 @@ if find_spec("Modules") is not None:
     from Modules.Word_to_ARPA import str_to_arpa 
 else:
     from Word_to_ARPA import str_to_arpa
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='mode')
+    parser.add_argument('--mode', type=str, help='mode of script, train or eval')
+    parser.add_argument('--factor')
+    parser.add_argument('--dir')
+    parser.add_argument('--sr')
+    parser.add_argument('--frame_step')
+    parser.add_argument('--frame_length')
+    parser.add_argument('--patience')
+    # parser.add_argument(['-c', '--continue'], action = 'store_false')
+    parser.add_argument('--eval_dir')
+    parser.add_argument('--eval_alignment')
 
-parser = argparse.ArgumentParser(description='mode')
-parser.add_argument('--mode', type=str, help='mode of script, train or eval')
-parser.add_argument('--factor')
-parser.add_argument('--dir')
-parser.add_argument('--sr')
-parser.add_argument('--frame_step')
-parser.add_argument('--frame_length')
-parser.add_argument('--patience')
-# parser.add_argument(['-c', '--continue'], action = 'store_false')
-parser.add_argument('--eval_dir')
-parser.add_argument('--eval_alignment')
-callbacks=[]
+    args = parser.parse_args()
+    mode = args.mode
+    dir = args.dir
+    if dir is None:
+        dir = ''
+    if args.factor is None:
+        factor = 4
+    else:
+        factor = int(args.factor)
+    if args.sr is None:
+        sr = 16000
+    else:
+        sr = int(args.sr)
+    if args.frame_step is None:
+        frame_step = 80
+    else:
+        frame_step = int(args.frame_step)
+    if args.frame_length is None:
+        frame_length = 160
+    else:
+        frame_length = int(args.frame_length)
 
-args = parser.parse_args()
-mode = args.mode
-dir = args.dir
-if dir is None:
-    dir = ''
-if args.factor is None:
-    factor = 4
-else:
-    factor = int(args.factor)
-if args.sr is None:
-    sr = 16000
-else:
-    sr = int(args.sr)
-if args.frame_step is None:
-    frame_step = 80
-else:
-    frame_step = int(args.frame_step)
-if args.frame_length is None:
-    frame_length = 160
-else:
-    frame_length = int(args.frame_length)
+    callbacks=[]
+    # Checkpoints and EarlyStopping
 
-# Checkpoints and EarlyStopping
-
-checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
-    filepath = './ppg/checkpoints/ckp.{epoch:02d}',
-    save_weights_only = True,
-    save_best_only = True,
-    verbose = 1)
-callbacks.append(checkpoint_callback)
-if args.patience is None:
-    pass
-else:
-    callbacks.append(tf.keras.callbacks.EarlyStopping(patience=int(args.patience)))
+    checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
+        filepath = './ppg/checkpoints/ckp.{epoch:02d}',
+        save_weights_only = True,
+        save_best_only = True,
+        verbose = 1)
+    callbacks.append(checkpoint_callback)
+    if args.patience is None:
+        pass
+    else:
+        callbacks.append(tf.keras.callbacks.EarlyStopping(patience=int(args.patience)))
 
 '''
 # factor = 4
@@ -334,93 +334,93 @@ def eval_model(token_layer):
     figs, axis = gene_ppg_pic(token, pred)
 
     figs.savefig(f'{time.strftime("%Y%m%d%H%M%S")}.png', dpi=400)
-
-if mode == 'train':
-    token_layer, ds = init()
-    # vocab = token_layer.get_vocabulary()
-
-    # masked_token = tf.cast(token_layer('sil')[0], dtype = tf.int64)
-    masked_token = None
-    train_ds, val_ds, test_ds = init_ds()
-    model = PPG_CNN(tokenizer = token_layer, factor = factor)
-    train_model(masked_token = masked_token)
-
-elif mode == 'eval':
-  
-    if args.dir is not None and args.eval_dir is None:
+if __name__ == '__main__':
+    if mode == 'train':
         token_layer, ds = init()
+        # vocab = token_layer.get_vocabulary()
+
+        # masked_token = tf.cast(token_layer('sil')[0], dtype = tf.int64)
+        masked_token = None
         train_ds, val_ds, test_ds = init_ds()
-        model = PPG_CNN(tokenizer=token_layer, factor = factor)
-        eval_model(token_layer = token_layer)
-    elif args.dir is None and args.eval_dir is not None:
-        wav_dir = os.path.expanduser(args.eval_dir)
-        wav, _ = librosa.load(path = wav_dir, sr = sr)
-        mel = get_mel(wav, sr = sr, frame_length = frame_length, frame_step = frame_step, factor = factor)
+        model = PPG_CNN(tokenizer = token_layer, factor = factor)
+        train_model(masked_token = masked_token)
+
+    elif mode == 'eval':
+      
+        if args.dir is not None and args.eval_dir is None:
+            token_layer, ds = init()
+            train_ds, val_ds, test_ds = init_ds()
+            model = PPG_CNN(tokenizer=token_layer, factor = factor)
+            eval_model(token_layer = token_layer)
+        elif args.dir is None and args.eval_dir is not None:
+            wav_dir = os.path.expanduser(args.eval_dir)
+            wav, _ = librosa.load(path = wav_dir, sr = sr)
+            mel = get_mel(wav, sr = sr, frame_length = frame_length, frame_step = frame_step, factor = factor)
+                
+            cp_dir = './ppg/checkpoints'
+            latest = tf.train.latest_checkpoint(cp_dir)
+            if latest is not None:
+                print(f'Found latest checkpoint at {latest}')
+            else:
+                raise Exception('Checkpoint not found')
+
+
+            tv_dict_path = "tv_layer_new.pkl"
+            # TODO: move path to hyperparameter file
+
+            if os.path.isfile(tv_dict_path):
+                from_disk = pickle.load(open(tv_dict_path, "rb"))
+                token_layer = tf.keras.layers.TextVectorization.from_config(from_disk['config'])
+                token_layer.set_weights(from_disk['weights'])
+            else:
+                token_layer = tf.keras.layers.TextVectorization(standardize = remove_letter)
+                token_layer.adapt(ds.map(lambda wav, phone, speaker, filename: phone))
+                pickle.dump({'config':token_layer.get_config(), 'weights': token_layer.get_weights()}, open(tv_dict_path, "wb"))
+
+            print(f'Loaded Vocabulary with length {len(token_layer.get_vocabulary())}')
             
-        cp_dir = './ppg/checkpoints'
-        latest = tf.train.latest_checkpoint(cp_dir)
-        if latest is not None:
-            print(f'Found latest checkpoint at {latest}')
+            vocab = token_layer.get_vocabulary()
+     
+            model = PPG_CNN(tokenizer=token_layer, factor = factor)
+            model.load_weights(latest).expect_partial()
+            
+            print('model is loaded')    
+
+
+            pred = tf.squeeze(model(mel[tf.newaxis, :]))
+
+            alignment = args.eval_alignment
+
+            if alignment is None:
+                filename = os.path.expanduser(args.eval_dir).rsplit('.', 1)[0]
+                if os.path.isfile(filename + '.txt'):
+                    alignment = filename + '.txt'
+                    print(f'Alignment found at {filename}')
+
+            if alignment is not None:
+                with open(alignment) as file:
+                    sentences = file.read()
+                    arpa = str_to_arpa(sentences)
+                    
+                    prd_compact = get_compact_prd(pred, vocab)    
+                    print(f'Prediction:\n{prd_compact}\nGround Truth:\n{arpa}')
+                    
+            
+            def gene_ppg_pic(pred):
+                xgrid = np.arange(pred.shape[0] + 1) + 1
+                ygrid = np.arange(pred.shape[-1] + 1)
+                pred_matrix = np.transpose(pred)
+                fig, axis = plt.subplots()
+                axis.pcolormesh(xgrid, ygrid, pred_matrix)
+                axis.set_title('Prediction')
+                return fig, axis
+             
+            figs, axis = gene_ppg_pic(pred)
+
+            path = f'{time.strftime("%Y%m%d%H%M%S")}.png' 
+
+            figs.savefig(path, dpi=400)
+            print(f'Figure saved at {path}')
+
         else:
-            raise Exception('Checkpoint not found')
-
-
-        tv_dict_path = "tv_layer_new.pkl"
-        # TODO: move path to hyperparameter file
-
-        if os.path.isfile(tv_dict_path):
-            from_disk = pickle.load(open(tv_dict_path, "rb"))
-            token_layer = tf.keras.layers.TextVectorization.from_config(from_disk['config'])
-            token_layer.set_weights(from_disk['weights'])
-        else:
-            token_layer = tf.keras.layers.TextVectorization(standardize = remove_letter)
-            token_layer.adapt(ds.map(lambda wav, phone, speaker, filename: phone))
-            pickle.dump({'config':token_layer.get_config(), 'weights': token_layer.get_weights()}, open(tv_dict_path, "wb"))
-
-        print(f'Loaded Vocabulary with length {len(token_layer.get_vocabulary())}')
-        
-        vocab = token_layer.get_vocabulary()
- 
-        model = PPG_CNN(tokenizer=token_layer, factor = factor)
-        model.load_weights(latest).expect_partial()
-        
-        print('model is loaded')    
-
-
-        pred = tf.squeeze(model(mel[tf.newaxis, :]))
-
-        alignment = args.eval_alignment
-
-        if alignment is None:
-            filename = os.path.expanduser(args.eval_dir).rsplit('.', 1)[0]
-            if os.path.isfile(filename + '.txt'):
-                alignment = filename + '.txt'
-                print(f'Alignment found at {filename}')
-
-        if alignment is not None:
-            with open(alignment) as file:
-                sentences = file.read()
-                arpa = str_to_arpa(sentences)
-                
-                prd_compact = get_compact_prd(pred, vocab)    
-                print(f'Prediction:\n{prd_compact}\nGround Truth:\n{arpa}')
-                
-        
-        def gene_ppg_pic(pred):
-            xgrid = np.arange(pred.shape[0] + 1) + 1
-            ygrid = np.arange(pred.shape[-1] + 1)
-            pred_matrix = np.transpose(pred)
-            fig, axis = plt.subplots()
-            axis.pcolormesh(xgrid, ygrid, pred_matrix)
-            axis.set_title('Prediction')
-            return fig, axis
-         
-        figs, axis = gene_ppg_pic(pred)
-
-        path = f'{time.strftime("%Y%m%d%H%M%S")}.png' 
-
-        figs.savefig(path, dpi=400)
-        print(f'Figure saved at {path}')
-
-    else:
-        raise Exception('No directory of data given')
+            raise Exception('No directory of data given')
