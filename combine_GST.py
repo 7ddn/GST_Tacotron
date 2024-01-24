@@ -17,10 +17,12 @@ if __name__ == '__main__':
 
     for root, _, files in os.walk(args.dir):
         for file in files:
-            if file == 'combined_gst.TXT' or file ==f'{dir_name}.TXT':
+            if file == 'combined_gst.TXT' or file == f'{dir_name}.TXT':
                 continue
             with open(os.path.join(root, file)) as f:
                 text = f.readlines()
+                if 'VCTK' in text or 'LJ' in text:
+                    continue
                 title = text.pop(0)
                 texts += text
     texts = [title] + texts

@@ -193,7 +193,7 @@
     "Taco_Version": 2,
     "Use_Mixed_Precision": false,
     "Inference_Cut": true,
-    "Inference_Path": "GST.Results/Inference/2024-01-14-lj-cnn/",
-    "Checkpoint_Path": "GST.Results/Checkpoint/2024-01-14-lj-cnn/",
+    "Inference_Path": "GST.Results/Inference/2A/",
+    "Checkpoint_Path": "GST.Results/Checkpoint/2A/",
     "Device": "0"
 }
