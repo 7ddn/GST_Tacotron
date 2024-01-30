@@ -13,7 +13,7 @@ from datetime import datetime
 
 from ProgressBar import progress
 from Feeder import Feeder
-from Modules.GST import Style_Token_Layer, GST_Concated_Encoder
+from Modules.GST import Style_Token_Layer, GST_Phoneme_Encoder
 from Audio import inv_spectrogram
 from scipy.io import wavfile
 
@@ -85,7 +85,7 @@ class GST_Tacotron:
         layer_Dict['Vocoder_Taco1'] = Modules.Vocoder_Taco1()
         if hp_Dict['GST']['Use']:
             layer_Dict['Style_Token_Layer'] = Style_Token_Layer()
-            layer_Dict['GST_Concated_Encoder'] = GST_Concated_Encoder()
+            layer_Dict['GST_Phoneme_Encoder'] = GST_Phoneme_Encoder()
 
         
         tensor_Dict['Train', 'Encoder'] = layer_Dict['Encoder'](
@@ -97,7 +97,7 @@ class GST_Tacotron:
                 input_Dict['GST_Mel'],
                 input_Dict['Mel_Length']
                 ])
-            tensor_Dict['Train', 'Encoder'] = layer_Dict['GST_Concated_Encoder']([
+            tensor_Dict['Train', 'Encoder'] = layer_Dict['GST_Phoneme_Encoder']([
                 tensor_Dict['Train', 'Encoder'],
                 tensor_Dict['Train', 'GST']
                 ])
@@ -120,7 +120,7 @@ class GST_Tacotron:
                 input_Dict['GST_Mel'],
                 input_Dict['Mel_Length']
                 ])
-            tensor_Dict['Inference', 'Encoder'] = layer_Dict['GST_Concated_Encoder']([
+            tensor_Dict['Inference', 'Encoder'] = layer_Dict['GST_Phoneme_Encoder']([
                 tensor_Dict['Inference', 'Encoder'],
                 tensor_Dict['Inference', 'GST']
                 ])

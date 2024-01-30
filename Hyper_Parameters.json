@@ -43,7 +43,12 @@
                 "Head": 4,
                 "Size": 128
             }
-        }
+        },
+	"Phoneme_Layer": {
+	    "Number" : 2,
+	    "Feed_Forward_Size": 512,
+	    "Head" : 4
+	}
     },
 
     "Tacotron1": {
@@ -160,14 +165,14 @@
             },
             "RNN": {
                 "Size": 256,
-                "Zoneout": 0.0
+                "Zoneout": 0.1
             }
         },
         "Griffin-Lim_Iter": 60
     },
 
     "Train": {
-        "Pattern_Path": "Pattern/LJ",
+        "Pattern_Path": "Pattern/SAA",
         "Metadata_File": "METADATA.PICKLE",
         "Batch_Size": 25,
         "Pattern_Sorting": true,
@@ -186,14 +191,14 @@
         "Checkpoint_Save_Timing": 50,
 
         "Sequential_Pattern": false,
-        "Initial_Inference": true
+        "Initial_Inference": false
     },
 
         
     "Taco_Version": 2,
     "Use_Mixed_Precision": false,
     "Inference_Cut": true,
-    "Inference_Path": "GST.Results/Inference/2A/",
-    "Checkpoint_Path": "GST.Results/Checkpoint/2A/",
+    "Inference_Path": "GST.Results/Inference/2024-01-27-SAA/",
+    "Checkpoint_Path": "GST.Results/Checkpoint/2024-01-27-SAA/",
     "Device": "0"
 }

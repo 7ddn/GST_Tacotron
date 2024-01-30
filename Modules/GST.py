@@ -196,24 +196,53 @@ class Style_Token_Layer(tf.keras.layers.Layer): #Attention which is in layer mus
             inputs= [new_Tensor, tiled_GST_Tokens]  #[query, value]
             )   #[Batch, 1, Att_dim]
         
-        if if_mean:
-            mean = tf.reduce_mean(new_Tensor, 0)
-            expand_mean = tf.tile(tf.expand_dims(mean, 0), [tf.shape(new_Tensor)[0], 1, 1])
-            new_Tensor = expand_mean
-         
         return tf.squeeze(new_Tensor, axis= 1)
 
-class GST_Concated_Encoder(tf.keras.layers.Layer):
+class GST_Phoneme_Encoder(tf.keras.layers.Layer):
     def __init__(self):
-        super(GST_Concated_Encoder, self).__init__()
+        super(GST_Phoneme_Encoder, self).__init__()
+
+        self.layer_Dict = {}
+        for ind in range(hp_Dict['GST']['Phoneme_Layer']['Number']):
+            self.layer_Dict[f'Phoneme_Attention_{ind}'] = MultiHeadAttention(
+                num_heads = hp_Dict['GST']['Phoneme_Layer']['Head'],
+                size = hp_Dict['Tacotron2']['Encoder']['RNN']['Size'] * 2)
+            self.layer_Dict[f'Attention_Norm_{ind}'] = tf.keras.layers.LayerNormalization()
+            self.layer_Dict[f'Phoneme_FF_{ind}'] = tf.keras.Sequential([
+                tf.keras.layers.Dense(
+                    units = hp_Dict['GST']['Phoneme_Layer']['Feed_Forward_Size'],
+                    activation = 'relu'),
+                tf.keras.layers.Dense(
+                    units = hp_Dict['GST']['Phoneme_Layer']['Feed_Forward_Size']),
+            ])
+            self.layer_Dict[f'FF_Norm_{ind}'] = tf.keras.layers.LayerNormalization()
 
     def call(self, inputs):
         '''
         inputs: [encoder, gsts]
         '''
         encoders, gsts = inputs
-        
+        new_Tensor = encoders # [Batch, Time_Step, Dim]       
+        gsts = tf.expand_dims(gsts, axis = 1)# GST [Batch, 1, Dim] 
+
+        # print(f'Encoders shape is {tf.shape(encoders)}')
+
+        for ind in range(hp_Dict['GST']['Phoneme_Layer']['Number']):
+            
+            att, _ = self.layer_Dict[f'Phoneme_Attention_{ind}'](
+                inputs = [gsts, new_Tensor]) # query, value (key)
+            new_Tensor += att
+            new_Tensor = self.layer_Dict[f'Attention_Norm_{ind}'](new_Tensor)
+            new_Tensor = new_Tensor + self.layer_Dict[f'Phoneme_FF_{ind}'](new_Tensor)
+            new_Tensor = self.layer_Dict[f'FF_Norm_{ind}'](new_Tensor)
+
+            # print(f'Inside loop {ind}, now shape is {tf.shape(new_Tensor)}')
+
+        return new_Tensor
+
+        ''' 
         return tf.concat([
             tf.tile(tf.expand_dims(gsts, axis= 1), [1, tf.shape(encoders)[1], 1]),
             encoders
             ], axis= -1)
+        '''
