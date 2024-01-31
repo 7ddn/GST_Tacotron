@@ -28,12 +28,17 @@ ban_list = None
 # allow_list = ['japanese', 'mandarin']
 allow_list = None
 
-#wav_List = []
-#tag_List = []
+wav_List = []
+tag_List = []
 for l in language_List:
-    wav_List = []
-    tag_List = []
+    # wav_List = []
+    # tag_List = []
     if language_Number[l] < min_num:
+        print('skipped because reach the min')
+        continue
+    
+    if (language_Number[l] > max_num):
+        print('skipped because reach the max')
         continue
     
     if ban_list is not None and l in ban_list:
@@ -51,11 +56,8 @@ for l in language_List:
     tag_List += [
         l for _ in range(1, language_Number[l])]
 
-    if (len(wav_List) > max_num):
-        print('skipped because reach the max')
-        continue
     print(f'Add utterances of language {l} into the list, number of utterances is {language_Number[l]}')
 
-# print(f'Starting GST Inference, used {len(wav_List)} utterances')
+print(f'Starting GST Inference, used {len(wav_List)} utterances')
 
-    gst_taco.Inference_GST(wav_List, tag_List)
+gst_taco.Inference_GST(wav_List, tag_List)

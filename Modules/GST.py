@@ -18,7 +18,7 @@ class Reference_Encoder(tf.keras.Model):
         super(Reference_Encoder, self).__init__()
         self.layer_Dict = {}
 
-        
+        '''        
         
         for index, (filters, kernel_Size, strides) in enumerate(zip(
             hp_Dict['GST']['Reference_Encoder']['Conv']['Filters'],
@@ -35,7 +35,7 @@ class Reference_Encoder(tf.keras.Model):
                 ))
             self.layer_Dict['Conv2D_{}'.format(index)].add(tf.keras.layers.BatchNormalization())
             self.layer_Dict['Conv2D_{}'.format(index)].add(tf.keras.layers.ReLU())
-
+        
         self.layer_Dict['RNN'] = tf.keras.layers.GRU(
             units= hp_Dict['GST']['Reference_Encoder']['RNN']['Size'],
             return_sequences= True
@@ -45,7 +45,7 @@ class Reference_Encoder(tf.keras.Model):
             lambda x: tf.cast(tf.math.ceil(x / tf.reduce_prod(hp_Dict['GST']['Reference_Encoder']['Conv']['Strides'])), tf.int32)
             )
 
-        
+        '''
 
         self.layer_Dict['Dense'] = tf.keras.layers.Dense(
             units= hp_Dict['GST']['Reference_Encoder']['Dense']['Size'],
@@ -98,11 +98,11 @@ class Reference_Encoder(tf.keras.Model):
         # Goal: Use PPG, instead of raw mel, to feed reference encoder
 
         # RNN Decoder, processing ppg to some embedding
-        '''
+        
         self.layer_Dict['Encoder_RNN'] = tf.keras.layers.Bidirectional(
             tf.keras.layers.LSTM(
                 units = hp_Dict['GST']['Reference_Encoder']['PPG_RNN']['Size']))
-        '''
+        
     def call(self, inputs):
         '''
 
@@ -128,17 +128,17 @@ class Reference_Encoder(tf.keras.Model):
 
         # [Batch, Time, PPG_Dim]
 
-        # new_Tensor = self.layer_Dict['Encoder_RNN'](new_Tensor) #[Batch, RNN_Dim]
+        new_Tensor = self.layer_Dict['Encoder_RNN'](new_Tensor) #[Batch, RNN_Dim]
 
-        new_Tensor = self.layer_Dict['Reshape_Dim'](new_Tensor) #[Batch, Time, Mel_Dim]
+        # new_Tensor = self.layer_Dict['Reshape_Dim'](new_Tensor) #[Batch, Time, Mel_Dim]
         # This dense layer only use for adapting the original tensor shapes
     
-        new_Tensor = tf.expand_dims(new_Tensor, axis= -1)   #[Batch, Time, Mel_Dim, 1]
+        #new_Tensor = tf.expand_dims(new_Tensor, axis= -1)   #[Batch, Time, Mel_Dim, 1]
         
 
         #new_Tensor = tf.expand_dims(mels, axis= -1)   #[Batch, Time, Mel_Dim, 1]
         
-        
+        ''' 
         for index in range(len(hp_Dict['GST']['Reference_Encoder']['Conv']['Filters'])):
             new_Tensor = self.layer_Dict['Conv2D_{}'.format(index)](new_Tensor)
         batch_Size, time_Step = tf.shape(new_Tensor)[0], tf.shape(new_Tensor)[1]
@@ -153,7 +153,7 @@ class Reference_Encoder(tf.keras.Model):
             params= new_Tensor,
             indices= tf.stack([tf.range(batch_Size), self.layer_Dict['Compress_Length'](mel_lengths) - 1], axis= 1)
             )
-        
+        '''
 
 
 
