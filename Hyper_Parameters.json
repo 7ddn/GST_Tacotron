@@ -45,7 +45,8 @@
             }
         },
 	"Phoneme_Layer": {
-	    "Number" : 2,
+	    "Preprocessing" : 256,
+            "Number" : 2,
 	    "Feed_Forward_Size": 512,
 	    "Head" : 4
 	}
@@ -172,7 +173,7 @@
     },
 
     "Train": {
-        "Pattern_Path": "Pattern/SAA",
+        "Pattern_Path": "Pattern/VCTK",
         "Metadata_File": "METADATA.PICKLE",
         "Batch_Size": 25,
         "Pattern_Sorting": true,
@@ -198,7 +199,7 @@
     "Taco_Version": 2,
     "Use_Mixed_Precision": false,
     "Inference_Cut": true,
-    "Inference_Path": "GST.Results/Inference/2024-01-27-SAA/",
-    "Checkpoint_Path": "GST.Results/Checkpoint/2024-01-27-SAA/",
+    "Inference_Path": "GST.Results/Inference/2024-01-30-VCTK-Series/",
+    "Checkpoint_Path": "GST.Results/Checkpoint/2024-01-30-VCTK-Series/",
     "Device": "0"
 }

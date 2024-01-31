@@ -203,6 +203,8 @@ class GST_Phoneme_Encoder(tf.keras.layers.Layer):
         super(GST_Phoneme_Encoder, self).__init__()
 
         self.layer_Dict = {}
+        self.layer_Dict['GST_Preprocessing'] = tf.keras.layers.Dense(
+            units = hp_Dict['GST']['Phoneme_Layer']['Preprocessing'])
         for ind in range(hp_Dict['GST']['Phoneme_Layer']['Number']):
             self.layer_Dict[f'Phoneme_Attention_{ind}'] = MultiHeadAttention(
                 num_heads = hp_Dict['GST']['Phoneme_Layer']['Head'],
@@ -223,7 +225,8 @@ class GST_Phoneme_Encoder(tf.keras.layers.Layer):
         '''
         encoders, gsts = inputs
         new_Tensor = encoders # [Batch, Time_Step, Dim]       
-        gsts = tf.expand_dims(gsts, axis = 1)# GST [Batch, 1, Dim] 
+        gsts = tf.expand_dims(gsts, axis = 1)# GST [Batch, 1, Dim]
+        gsts = self.layer_Dict['GST_Preprocessing'](gsts) 
 
         # print(f'Encoders shape is {tf.shape(encoders)}')
 
