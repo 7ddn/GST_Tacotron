@@ -18,24 +18,6 @@ class Reference_Encoder(tf.keras.Model):
         super(Reference_Encoder, self).__init__()
         self.layer_Dict = {}
 
-        
-        
-        for index, (filters, kernel_Size, strides) in enumerate(zip(
-            hp_Dict['GST']['Reference_Encoder']['Conv']['Filters'],
-            hp_Dict['GST']['Reference_Encoder']['Conv']['Kernel_Size'],
-            hp_Dict['GST']['Reference_Encoder']['Conv']['Strides']
-            )):
-            self.layer_Dict['Conv2D_{}'.format(index)] = tf.keras.Sequential()
-            self.layer_Dict['Conv2D_{}'.format(index)].add(tf.keras.layers.Conv2D(
-                filters= filters,
-                kernel_size= kernel_Size,
-                strides= strides,
-                padding='same',
-                use_bias= False
-                ))
-            self.layer_Dict['Conv2D_{}'.format(index)].add(tf.keras.layers.BatchNormalization())
-            self.layer_Dict['Conv2D_{}'.format(index)].add(tf.keras.layers.ReLU())
-
         self.layer_Dict['RNN'] = tf.keras.layers.GRU(
             units= hp_Dict['GST']['Reference_Encoder']['RNN']['Size'],
             return_sequences= True
@@ -88,21 +70,13 @@ class Reference_Encoder(tf.keras.Model):
                 )
                 
 
-        # Remake dim to Mel_Dim
-        self.layer_Dict['Reshape_Dim'] = tf.keras.layers.LSTM(
-            units = hp_Dict['Sound']['Mel_Dim'], 
-            activation= 'tanh',
-            return_sequences=True
-            # use_bias = False
-        ) 
         # Goal: Use PPG, instead of raw mel, to feed reference encoder
 
         # RNN Decoder, processing ppg to some embedding
-        '''
         self.layer_Dict['Encoder_RNN'] = tf.keras.layers.Bidirectional(
             tf.keras.layers.LSTM(
                 units = hp_Dict['GST']['Reference_Encoder']['PPG_RNN']['Size']))
-        '''
+        
     def call(self, inputs):
         '''
 
@@ -128,34 +102,7 @@ class Reference_Encoder(tf.keras.Model):
 
         # [Batch, Time, PPG_Dim]
 
-        # new_Tensor = self.layer_Dict['Encoder_RNN'](new_Tensor) #[Batch, RNN_Dim]
-
-        new_Tensor = self.layer_Dict['Reshape_Dim'](new_Tensor) #[Batch, Time, Mel_Dim]
-        # This dense layer only use for adapting the original tensor shapes
-    
-        new_Tensor = tf.expand_dims(new_Tensor, axis= -1)   #[Batch, Time, Mel_Dim, 1]
-        
-
-        #new_Tensor = tf.expand_dims(mels, axis= -1)   #[Batch, Time, Mel_Dim, 1]
-        
-        
-        for index in range(len(hp_Dict['GST']['Reference_Encoder']['Conv']['Filters'])):
-            new_Tensor = self.layer_Dict['Conv2D_{}'.format(index)](new_Tensor)
-        batch_Size, time_Step = tf.shape(new_Tensor)[0], tf.shape(new_Tensor)[1]
-        height, width = new_Tensor.get_shape().as_list()[2:]
-        new_Tensor = tf.reshape(
-            new_Tensor,
-            shape= [batch_Size, time_Step, height * width]
-            )
-        new_Tensor = self.layer_Dict['RNN'](new_Tensor)        
-
-        new_Tensor = tf.gather_nd(
-            params= new_Tensor,
-            indices= tf.stack([tf.range(batch_Size), self.layer_Dict['Compress_Length'](mel_lengths) - 1], axis= 1)
-            )
-        
-
-
+        new_Tensor = self.layer_Dict['Encoder_RNN'](new_Tensor) #[Batch, RNN_Dim]
 
         return self.layer_Dict['Dense'](new_Tensor)
 
@@ -203,44 +150,30 @@ class GST_Phoneme_Encoder(tf.keras.layers.Layer):
         super(GST_Phoneme_Encoder, self).__init__()
 
         self.layer_Dict = {}
-        self.layer_Dict['GST_Preprocessing'] = tf.keras.layers.Dense(
-            units = hp_Dict['GST']['Phoneme_Layer']['Preprocessing'])
-        for ind in range(hp_Dict['GST']['Phoneme_Layer']['Number']):
-            self.layer_Dict[f'Phoneme_Attention_{ind}'] = MultiHeadAttention(
-                num_heads = hp_Dict['GST']['Phoneme_Layer']['Head'],
-                size = hp_Dict['Tacotron2']['Encoder']['RNN']['Size'] * 2)
-            self.layer_Dict[f'Attention_Norm_{ind}'] = tf.keras.layers.LayerNormalization()
-            self.layer_Dict[f'Phoneme_FF_{ind}'] = tf.keras.Sequential([
-                tf.keras.layers.Dense(
-                    units = hp_Dict['GST']['Phoneme_Layer']['Feed_Forward_Size'],
-                    activation = 'relu'),
-                tf.keras.layers.Dense(
-                    units = hp_Dict['GST']['Phoneme_Layer']['Feed_Forward_Size']),
-            ])
-            self.layer_Dict[f'FF_Norm_{ind}'] = tf.keras.layers.LayerNormalization()
+        
+        for i in range(hp_Dict['GST']['Style_Token']['Attention']['Size']):
+            self.layer_Dict[f'Dense_{i}'] = tf.keras.layers.Dense(units = hp_Dict['GST']['Phoneme_Layer']['Depth'])
+
+        # self.layer_Dict['Flatten'] = tf.keras.layers.Flatten()
 
     def call(self, inputs):
         '''
         inputs: [encoder, gsts]
         '''
         encoders, gsts = inputs
-        new_Tensor = encoders # [Batch, Time_Step, Dim]       
-        gsts = tf.expand_dims(gsts, axis = 1)# GST [Batch, 1, Dim]
-        gsts = self.layer_Dict['GST_Preprocessing'](gsts) 
+        # encoders # [Batch, Time_Step, Dim]       
+        # GST [Batch, GST_Dim]
 
-        # print(f'Encoders shape is {tf.shape(encoders)}')
+        gsts = gsts[:, :, tf.newaxis, tf.newaxis] # [Batch, GST_Dim, 1, 1]
 
-        for ind in range(hp_Dict['GST']['Phoneme_Layer']['Number']):
-            
-            att, _ = self.layer_Dict[f'Phoneme_Attention_{ind}'](
-                inputs = [gsts, new_Tensor]) # query, value (key)
-            new_Tensor += att
-            new_Tensor = self.layer_Dict[f'Attention_Norm_{ind}'](new_Tensor)
-            new_Tensor = new_Tensor + self.layer_Dict[f'Phoneme_FF_{ind}'](new_Tensor)
-            new_Tensor = self.layer_Dict[f'FF_Norm_{ind}'](new_Tensor)
+        embedded = [self.layer_Dict[f'Dense_{i}'](encoders) for i in range(hp_Dict['GST']['Style_Token']['Attention']['Size'])] # GST_Dim * [Batch, Time_Step, new_Dim]
+        embedded = tf.stack(embedded, axis = 1) # [Batch, GST_Dim, Time_Step, new_Dim]
 
-            # print(f'Inside loop {ind}, now shape is {tf.shape(new_Tensor)}')
+        new_Tensor = gsts * embedded # [Batch, GST_Dim, Time_Step, Depth]
+        new_Tensor = tf.reduce_sum(new_Tensor, axis = 1)
 
+        # output [Batch, Time_Step, Output_Dim]
+        
         return new_Tensor
 
         ''' 

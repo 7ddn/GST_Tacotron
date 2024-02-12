@@ -9,17 +9,13 @@
     },
 
     "Token_JSON_Path": "Token_Index_Dict.ENG.json",
+    "ARPA_Token_JSON_Path": "Token_Index_Dict.ARPA.json",
 
     "Text_Vectorization_Weights_Path": "tv_layer.pkl",
 
     "GST": {
         "Use": true,
         "Reference_Encoder": {
-            "Conv": {
-                "Filters": [32, 32, 64, 64, 128, 128],
-                "Kernel_Size": [3, 3, 3, 3, 3, 3],
-                "Strides": [2, 2, 2, 2, 2, 2]
-            },
             "RNN": {
                 "Size": 128
             },
@@ -48,7 +44,8 @@
 	    "Preprocessing" : 256,
             "Number" : 2,
 	    "Feed_Forward_Size": 512,
-	    "Head" : 4
+	    "Head" : 4,
+	    "Depth" : 256
 	}
     },
 
@@ -173,7 +170,7 @@
     },
 
     "Train": {
-        "Pattern_Path": "Pattern/VCTK",
+        "Pattern_Path": "Pattern/VCTK_ARPA",
         "Metadata_File": "METADATA.PICKLE",
         "Batch_Size": 25,
         "Pattern_Sorting": true,
@@ -199,7 +196,7 @@
     "Taco_Version": 2,
     "Use_Mixed_Precision": false,
     "Inference_Cut": true,
-    "Inference_Path": "GST.Results/Inference/2024-01-30-VCTK-Series/",
-    "Checkpoint_Path": "GST.Results/Checkpoint/2024-01-30-VCTK-Series/",
+    "Inference_Path": "GST.Results/Inference/2024-02-08-LJ/",
+    "Checkpoint_Path": "GST.Results/Checkpoint/2024-02-08-LJ/",
     "Device": "0"
 }
