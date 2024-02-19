@@ -14,6 +14,7 @@ from datetime import datetime
 from ProgressBar import progress
 from Feeder import Feeder
 from Modules.GST import Style_Token_Layer, GST_Phoneme_Encoder
+from Modules.Utils import to_ARPA
 from Audio import inv_spectrogram
 from scipy.io import wavfile
 
@@ -303,7 +304,7 @@ class GST_Tacotron:
             sentence_List = []
             with open('Inference_Sentence_for_Training.txt', 'r') as f:
                 for line in f.readlines():
-                    sentence_List.append(line.strip())
+                    sentence_List.append(to_ARPA(line.strip()))
 
             if hp_Dict['GST']['Use']:
                 wav_List_for_GST = []

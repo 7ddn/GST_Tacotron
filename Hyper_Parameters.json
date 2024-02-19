@@ -196,7 +196,7 @@
     "Taco_Version": 2,
     "Use_Mixed_Precision": false,
     "Inference_Cut": true,
-    "Inference_Path": "GST.Results/Inference/2024-02-08-LJ/",
-    "Checkpoint_Path": "GST.Results/Checkpoint/2024-02-08-LJ/",
+    "Inference_Path": "GST.Results/Inference/2024-02-12-Phoneme-VCTK/",
+    "Checkpoint_Path": "GST.Results/Checkpoint/2024-02-12-Phoneme-VCTK/",
     "Device": "0"
 }

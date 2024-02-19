@@ -7,6 +7,7 @@ from random import shuffle
 import cmudict
 
 from Audio import melspectrogram, spectrogram, preemphasis, inv_preemphasis
+from Modules.Utils import to_ARPA
 
 with open('Hyper_Parameters.json', 'r') as f:
     hp_Dict = json.load(f)
@@ -32,12 +33,7 @@ def Text_Filtering(text):
     for filter, replace_STR in replace_List:
         text= text.replace(filter, replace_STR)
 
-    text= text.strip()
-    text = [cmu[i.lower()] for i in text.split()]
-    text = [' '.join(i[0]) for i in text if len(i)>0]
-    text = ' '.join(text).strip()
-    for filter in num:
-        text = text.replace(filter, '')
+    text = to_ARPA(text)
 
     if len(regex_Checker.findall(text)) > 1:
         return None
