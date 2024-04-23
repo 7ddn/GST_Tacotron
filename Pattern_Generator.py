@@ -81,7 +81,7 @@ def Spectrogram_Generate(path, top_db= 60, range_Ignore = False):
         max_abs_value= hp_Dict['Sound']['Max_Abs_Mel']
         ).astype(np.float32))
 
-def Pattern_File_Generate(path, text, token_Index_Dict, dataset, file_Prefix='', display_Prefix = '', top_db= 60, range_Ignore = False):
+def Pattern_File_Generate(path, text, token_Index_Dict, dataset, speaker = None, file_Prefix='', display_Prefix = '', top_db= 60, range_Ignore = False):
     mel = Mel_Generate(path, top_db, range_Ignore)
 
     if mel is None:
@@ -101,6 +101,7 @@ def Pattern_File_Generate(path, text, token_Index_Dict, dataset, file_Prefix='',
         'Spectrogram': spect,
         'Text': text,
         'Dataset': dataset,
+        'Speaker': speaker,
         }
 
     pickle_File_Name = '{}.{}{}.PICKLE'.format(dataset, file_Prefix, os.path.splitext(os.path.basename(path))[0]).upper()
@@ -410,6 +411,8 @@ if __name__ == '__main__':
                     vctk_Text_Dict[file_Path],
                     token_Index_Dict,
                     'VCTK',
+                    # Speaker
+                    file_Path.split('/')[-1].split('_')[0].replace('p', ''),
                     '',
                     'VCTK {:05d}/{:05d}    Total {:05d}/{:05d}'.format(
                         index,

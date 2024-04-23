@@ -35,12 +35,14 @@ def Text_Filtering(text):
 
     text = to_ARPA(text)
 
-    if len(regex_Checker.findall(text)) > 1:
+    res = regex_Checker.findall(text)
+
+    if len(res) > 1:
         return None
     elif text.startswith('\''):
         return None
     else:
-        return regex_Checker.findall(text)[0]
+        return res[0] if res else None
 
 def Mel_Generate(path, top_db= 60, range_Ignore = False):
     sig = librosa.core.load(
