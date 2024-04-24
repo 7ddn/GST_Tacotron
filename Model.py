@@ -88,6 +88,8 @@ class GST_Tacotron:
             layer_Dict['Style_Token_Layer'] = Style_Token_Layer()
             layer_Dict['GST_Phoneme_Encoder'] = GST_Phoneme_Encoder()
 
+        # x-vector
+        layer_Dict['X_Vector'] = Modules.Layers.
         
         tensor_Dict['Train', 'Encoder'] = layer_Dict['Encoder'](
             input_Dict['Token'],

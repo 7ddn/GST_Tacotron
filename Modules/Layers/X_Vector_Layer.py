@@ -1,16 +1,16 @@
 import tensorflow as tf
 
-class StatPoolingLayer(tf.keras.Layer):
+class StatPoolingLayer(tf.keras.layers.Layer):
     def call(self, inputs):
-        means = tf.math.reduce_mean(inputs, axis = -1)
-        stddevs = tf.math.reduce_std(inputs, axis = -1) 
-        return tf.concat((means, stddevs), axis=-1))
+        means = tf.math.reduce_mean(inputs, axis = 1)
+        stddevs = tf.math.reduce_std(inputs, axis = 1) 
+        return tf.concat((means, stddevs), axis=1)
 
-class XVectorLayer(tf.keras.Layer):
+class XVectorLayer(tf.keras.layers.Layer):
 
     # TODO: Read parameters from Hparamters file
     def __init__(self, num_speaker, if_digit = False,**kwargs):
-        super(self).__init__(**kwargs)
+        super(XVectorLayer, self).__init__(**kwargs)
     
         # num_frame_layers = 5
         # num_segment_layer = 2
