@@ -49,6 +49,11 @@
 	}
     },
 
+    "X_Vector": {
+	"Concat_Length" : 128,
+	"Checkpoint_Path" : "Modules/Layers/checkpoints_May_09_2024"
+    },
+
     "Tacotron1": {
         "Encoder": {
             "Embedding": {
@@ -170,7 +175,7 @@
     },
 
     "Train": {
-        "Pattern_Path": "Pattern/LJ_ARPA",
+        "Pattern_Path": "Pattern/VCTK_ARPA",
         "Metadata_File": "METADATA.PICKLE",
         "Batch_Size": 25,
         "Pattern_Sorting": true,
@@ -196,7 +201,7 @@
     "Taco_Version": 2,
     "Use_Mixed_Precision": false,
     "Inference_Cut": true,
-    "Inference_Path": "GST.Results/Inference/2024-02-20-Phoneme-LJ/",
-    "Checkpoint_Path": "GST.Results/Checkpoint/2024-02-20-Phoneme-LJ/",
+    "Inference_Path": "GST.Results/Inference/2024-05-08/",
+    "Checkpoint_Path": "GST.Results/Checkpoint/2024-05-08/",
     "Device": "0"
 }

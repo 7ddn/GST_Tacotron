@@ -61,12 +61,12 @@ class Reference_Encoder(tf.keras.Model):
                 self.layer_Dict[f'Skip_Dense_{num*(depth+1)+index}'] = tf.keras.layers.Dense(
                     units = units,
                     activation = 'relu',
-                    # use_bias = False
+                    use_bias = False
                 )
             self.layer_Dict[f'Skip_Dense_{num*(depth+1)+index+1}'] = tf.keras.layers.Dense(
                     units = self.ppg_dim,
                     activation = 'relu',
-                    # use_bias = False
+                    use_bias = False
                 )
                 
 
@@ -145,14 +145,28 @@ class Style_Token_Layer(tf.keras.layers.Layer): #Attention which is in layer mus
         
         return tf.squeeze(new_Tensor, axis= 1)
 
+class L2UnitRegularizer(tf.keras.regularizers.Regularizer):
+    def __init__(self, l2 = 0.):
+        self.l2 = tf.keras.regularizers.L2(l2 = l2)
+    def __call__(self, x):
+        return self.l2(x - tf.eye(x.shape[-1]))
+        
+
 class GST_Phoneme_Encoder(tf.keras.layers.Layer):
+
     def __init__(self):
         super(GST_Phoneme_Encoder, self).__init__()
 
         self.layer_Dict = {}
         
         for i in range(hp_Dict['GST']['Style_Token']['Attention']['Size']):
-            self.layer_Dict[f'Dense_{i}'] = tf.keras.layers.Dense(units = hp_Dict['GST']['Phoneme_Layer']['Depth'])
+            self.layer_Dict[f'Dense_{i}'] = tf.keras.layers.Dense(
+                # units = hp_Dict['GST']['Phoneme_Layer']['Depth'],
+                units = hp_Dict['Tacotron2']['Encoder']['Embedding']['Size'],
+                kernel_initializer = tf.keras.initializers.Identity(),
+                kernel_regularizer = L2UnitRegularizer(1e-4),
+                use_bias = False,
+            )
 
         # self.layer_Dict['Flatten'] = tf.keras.layers.Flatten()
 
@@ -164,7 +178,7 @@ class GST_Phoneme_Encoder(tf.keras.layers.Layer):
         # encoders # [Batch, Time_Step, Dim]       
         # GST [Batch, GST_Dim]
 
-        gsts = gsts[:, :, tf.newaxis, tf.newaxis] # [Batch, GST_Dim, 1, 1]
+        gsts = tf.nn.softmax(gsts[:, :, tf.newaxis, tf.newaxis], axis = 1) # [Batch, GST_Dim, 1, 1]
 
         embedded = [self.layer_Dict[f'Dense_{i}'](encoders) for i in range(hp_Dict['GST']['Style_Token']['Attention']['Size'])] # GST_Dim * [Batch, Time_Step, new_Dim]
         embedded = tf.stack(embedded, axis = 1) # [Batch, GST_Dim, Time_Step, new_Dim]

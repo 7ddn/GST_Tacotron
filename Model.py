@@ -15,6 +15,9 @@ from ProgressBar import progress
 from Feeder import Feeder
 from Modules.GST import Style_Token_Layer, GST_Phoneme_Encoder
 from Modules.Utils import to_ARPA
+from Modules.Layers.X_Vector_Layer import XVectorLayer
+from Modules.Layers.X_Vector_Concat_Layer import XVectorConcatLayer
+
 from Audio import inv_spectrogram
 from scipy.io import wavfile
 
@@ -89,12 +92,24 @@ class GST_Tacotron:
             layer_Dict['GST_Phoneme_Encoder'] = GST_Phoneme_Encoder()
 
         # x-vector
-        layer_Dict['X_Vector'] = Modules.Layers.
-        
+        layer_Dict['X_Vector'] = XVectorLayer()
+        layer_Dict['X_Vector'].load_cp(hp_Dict['X_Vector']['Checkpoint_Path'])
+        layer_Dict['X_Vector'].trainable = False
+        layer_Dict['X_Vector_Concat'] = XVectorConcatLayer(
+            new_Dimension = hp_Dict['X_Vector']['Concat_Length']
+        )       
+
+ 
         tensor_Dict['Train', 'Encoder'] = layer_Dict['Encoder'](
             input_Dict['Token'],
             training= True
             )
+        
+        # X-Vector
+        tensor_Dict['Train', 'X_Vector'] = layer_Dict['X_Vector'](
+            input_Dict['GST_Mel']
+            )
+        
         if hp_Dict['GST']['Use']:            
             tensor_Dict['Train', 'GST'] = layer_Dict['Style_Token_Layer']([                
                 input_Dict['GST_Mel'],
@@ -103,6 +118,10 @@ class GST_Tacotron:
             tensor_Dict['Train', 'Encoder'] = layer_Dict['GST_Phoneme_Encoder']([
                 tensor_Dict['Train', 'Encoder'],
                 tensor_Dict['Train', 'GST']
+                ])
+            tensor_Dict['Train', 'Encoder'] = layer_Dict['X_Vector_Concat']([
+                tensor_Dict['Train', 'Encoder'],
+                tensor_Dict['Train', 'X_Vector']
                 ])
 
         tensor_Dict['Train', 'Export_Pre_Mel'], tensor_Dict['Train', 'Export_Mel'], tensor_Dict['Train', 'Stop_Token'], _ = layer_Dict['Decoder'](
@@ -113,11 +132,17 @@ class GST_Tacotron:
             tensor_Dict['Train', 'Export_Mel'],
             training= True
             )
-        
+
         tensor_Dict['Inference', 'Encoder'] = layer_Dict['Encoder'](
             input_Dict['Token'],
             training= False
-            )        
+            )
+       
+        # X-Vector
+        tensor_Dict['Inference', 'X_Vector'] = layer_Dict['X_Vector'](
+            input_Dict['GST_Mel']
+            )
+ 
         if hp_Dict['GST']['Use']:
             tensor_Dict['Inference', 'GST'] = layer_Dict['Style_Token_Layer']([                
                 input_Dict['GST_Mel'],
@@ -126,6 +151,10 @@ class GST_Tacotron:
             tensor_Dict['Inference', 'Encoder'] = layer_Dict['GST_Phoneme_Encoder']([
                 tensor_Dict['Inference', 'Encoder'],
                 tensor_Dict['Inference', 'GST']
+                ])
+            tensor_Dict['Inference', 'Encoder'] = layer_Dict['X_Vector_Concat']([
+                tensor_Dict['Inference', 'Encoder'],
+                tensor_Dict['Inference', 'X_Vector']
                 ])
 
         _, tensor_Dict['Inference', 'Export_Mel'], tensor_Dict['Inference', 'Stop_Token'], tensor_Dict['Inference', 'Alignment'] = layer_Dict['Decoder'](
@@ -136,6 +165,7 @@ class GST_Tacotron:
             tensor_Dict['Inference', 'Export_Mel'],
             training= False
             )
+
 
         self.model_Dict = {}
         self.model_Dict['Train'] = tf.keras.Model(
@@ -249,13 +279,14 @@ class GST_Tacotron:
                 maxlen= tf.shape(spectrogram_Loss)[-1],
                 dtype= tf.as_dtype(policy.compute_dtype)
                 )
+            gst_phoneme_l2 = tf.reduce_sum(self.model_Dict['Train'].get_layer('gst__phoneme__encoder').losses)
                 
-            loss = tf.reduce_mean(pre_Mel_Loss) + tf.reduce_mean(mel_Loss) + tf.reduce_mean(stop_Loss) + tf.reduce_mean(spectrogram_Loss)
+            loss = tf.reduce_mean(pre_Mel_Loss) + tf.reduce_mean(mel_Loss) + tf.reduce_mean(stop_Loss) + tf.reduce_mean(spectrogram_Loss)+gst_phoneme_l2
 
         gradients = tape.gradient(loss, self.model_Dict['Train'].trainable_variables)
         self.optimizer.apply_gradients(zip(gradients, self.model_Dict['Train'].trainable_variables))
 
-        return loss
+        return loss, gst_phoneme_l2
 
     @tf.function
     def Inference_Step(self, tokens, token_lengths, initial_mels, mels_for_gst= None, mel_lengths_for_gst= None):
@@ -307,6 +338,7 @@ class GST_Tacotron:
             with open('Inference_Sentence_for_Training.txt', 'r') as f:
                 for line in f.readlines():
                     sentence_List.append(to_ARPA(line.strip()))
+                    # sentence_List.append(line.strip())
 
             if hp_Dict['GST']['Use']:
                 wav_List_for_GST = []
@@ -331,7 +363,7 @@ class GST_Tacotron:
         while True:
             start_Time = time.time()
 
-            loss = self.Train_Step(**self.feeder.Get_Pattern())
+            loss , gst_l2= self.Train_Step(**self.feeder.Get_Pattern())
             if np.isnan(loss):
                 raise ValueError('NaN loss')
             display_List = [
@@ -340,7 +372,7 @@ class GST_Tacotron:
                 # 'LR: {:0.5f}'.format(self.optimizer.lr(self.optimizer.iterations.numpy() - 1)),
                 # Testing
                 'LR: {:0.5f}'.format(self.optimizer.lr.numpy()),
-                'Loss: {:0.5f}'.format(loss),
+                'Loss: {:0.5f}, GST L2: {:0.5f}'.format(loss, gst_l2),
                 ]
             print('\t\t'.join(display_List))
 

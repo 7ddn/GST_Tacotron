@@ -6,7 +6,8 @@ from .Attention.Steps import BahdanauMonotonicAttention, StepwiseMonotonicAttent
 with open('Hyper_Parameters.json', 'r') as f:
     hp_Dict = json.load(f)
 
-with open(hp_Dict['Token_JSON_Path'], 'r') as f:
+# with open(hp_Dict['Token_JSON_Path'], 'r') as f:
+with open(hp_Dict['ARPA_Token_JSON_Path'], 'r') as f:    
     token_Index_Dict = json.load(f)
 
 class Encoder(tf.keras.Model):
