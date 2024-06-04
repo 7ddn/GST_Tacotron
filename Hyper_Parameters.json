@@ -2,17 +2,14 @@
     "Sound": {
         "Spectrogram_Dim": 513,
         "Mel_Dim": 80,
-	"Frame_Length": 1024,
+        "Frame_Length": 1024,
         "Frame_Shift": 320,
         "Sample_Rate": 16000,
         "Max_Abs_Mel": 4
     },
-
     "Token_JSON_Path": "Token_Index_Dict.ENG.json",
     "ARPA_Token_JSON_Path": "Token_Index_Dict.ARPA.json",
-
     "Text_Vectorization_Weights_Path": "tv_layer.pkl",
-
     "GST": {
         "Use": true,
         "Reference_Encoder": {
@@ -22,13 +19,21 @@
             "Dense": {
                 "Size": 128
             },
-	    "SkipConnection": {
-		"Numbers": 1,
-		"Sizes": [128, 256, 128]
-	    },
-	    "PPG_RNN": {
-		"Size": 128
-	    }
+            "SkipConnection": {
+                "Numbers": 1,
+                "Sizes": [
+                    128,
+                    256,
+                    128
+                ]
+            },
+            "PPG_RNN": {
+                "Size": 128,
+                "Checkpoint_Path": "Modules/Layers/Pretrained/PPG/checkpoints_May_30_2024"
+            },
+            "BD":{
+                "Count_Path": "Modules/Layers/Pretrained/phone_counts.pkl"
+            }
         },
         "Style_Token": {
             "Size": 16,
@@ -40,27 +45,32 @@
                 "Size": 128
             }
         },
-	"Phoneme_Layer": {
-	    "Preprocessing" : 256,
-            "Number" : 2,
-	    "Feed_Forward_Size": 512,
-	    "Head" : 4,
-	    "Depth" : 256
-	}
+        "Phoneme_Layer": {
+            "Preprocessing": 256,
+            "Number": 2,
+            "Feed_Forward_Size": 512,
+            "Head": 4,
+            "Depth": 256,
+            "Use_L2": false,
+            "Softmax": true,
+            "Activation": "relu"
+        }
     },
-
     "X_Vector": {
-	"Concat_Length" : 128,
-	"Checkpoint_Path" : "Modules/Layers/checkpoints_May_09_2024"
+        "Use": false,
+        "Concat_Length": 128,
+        "Checkpoint_Path": "Modules/Layers/checkpoints_May_09_2024"
     },
-
     "Tacotron1": {
         "Encoder": {
             "Embedding": {
                 "Size": 256
             },
             "Prenet": {
-                "Size": [256, 128],
+                "Size": [
+                    256,
+                    128
+                ],
                 "Dropout_Rate": 0.5
             },
             "CBHG": {
@@ -73,8 +83,14 @@
                     "Strides": 1
                 },
                 "Conv1D": {
-                    "Filters": [128, 128],
-                    "Kernel_Size": [3, 3]
+                    "Filters": [
+                        128,
+                        128
+                    ],
+                    "Kernel_Size": [
+                        3,
+                        3
+                    ]
                 },
                 "Highwaynet": {
                     "Count": 4,
@@ -85,19 +101,28 @@
                     "Zoneout": 0.0
                 }
             }
-        },        
+        },
         "Decoder": {
             "Prenet": {
-                "Size": [256, 128],
+                "Size": [
+                    256,
+                    128
+                ],
                 "Dropout_Rate": 0.5
             },
-            "Pre_RNN": {                
-                "Size": [256],
+            "Pre_RNN": {
+                "Size": [
+                    256
+                ],
                 "Zoneout": 0.0
             },
             "Attention": {
-                "Type": ["SMA"],
-                "Size": [128]
+                "Type": [
+                    "SMA"
+                ],
+                "Size": [
+                    128
+                ]
             },
             "Post_RNN": {
                 "Count": 2,
@@ -106,30 +131,47 @@
             }
         }
     },
-
     "Tacotron2": {
         "Encoder": {
             "Embedding": {
                 "Size": 512
             },
             "Conv": {
-                "Filters": [512, 512, 512],
-                "Kernel_Size": [5, 5, 5],
-                "Strides": [1, 1, 1],
+                "Filters": [
+                    512,
+                    512,
+                    512
+                ],
+                "Kernel_Size": [
+                    5,
+                    5,
+                    5
+                ],
+                "Strides": [
+                    1,
+                    1,
+                    1
+                ],
                 "Dropout_Rate": 0.5
             },
             "RNN": {
                 "Size": 256,
                 "Zoneout": 0.0
             }
-        },        
+        },
         "Decoder": {
             "Prenet": {
-                "Size": [256, 256],
+                "Size": [
+                    256,
+                    256
+                ],
                 "Dropout_Rate": 0.5
             },
-            "RNN": {                
-                "Size": [1024, 1024],
+            "RNN": {
+                "Size": [
+                    1024,
+                    1024
+                ],
                 "Zoneout": 0.0
             },
             "Attention": {
@@ -137,17 +179,30 @@
                 "Size": 128
             },
             "Conv": {
-                "Filters": [512, 512, 512, 512],
-                "Kernel_Size": [5, 5, 5, 5],
-                "Strides": [1, 1, 1, 1],
+                "Filters": [
+                    512,
+                    512,
+                    512,
+                    512
+                ],
+                "Kernel_Size": [
+                    5,
+                    5,
+                    5,
+                    5
+                ],
+                "Strides": [
+                    1,
+                    1,
+                    1,
+                    1
+                ],
                 "Dropout_Rate": 0.5
             }
         }
     },
-
     "Step_Reduction": 1,
     "Max_Step": 1000,
-
     "Vocoder_Taco1": {
         "CBHG": {
             "Conv_Bank": {
@@ -159,8 +214,14 @@
                 "Strides": 1
             },
             "Conv1D": {
-                "Filters": [128, 128],
-                "Kernel_Size": [3, 3]
+                "Filters": [
+                    128,
+                    128
+                ],
+                "Kernel_Size": [
+                    3,
+                    3
+                ]
             },
             "Highwaynet": {
                 "Count": 4,
@@ -173,35 +234,32 @@
         },
         "Griffin-Lim_Iter": 60
     },
-
     "Train": {
-        "Pattern_Path": "Pattern/VCTK_ARPA",
+        "Pattern_Path": "Pattern/VCTK",
         "Metadata_File": "METADATA.PICKLE",
-        "Batch_Size": 25,
+        "Batch_Size": 50,
         "Pattern_Sorting": true,
         "Min_Wav_Length": 500,
         "Max_Wav_Length": 10000,
         "Max_Pattern_Queue": 25,
         "Initial_Learning_Rate": 1e-3,
-        "Min_Learning_Rate": 1e-5,
+        "Min_Learning_Rate": 1e-4,
         "ADAM": {
-            "Beta1": 0.9,
-            "Beta2": 0.999,
+            "Beta1": 0.99,
+            "Beta2": 0.9999,
             "Epsilon": 1e-7
         },
         "Use_L2_Loss": true,
         "Inference_Timing": 500,
         "Checkpoint_Save_Timing": 50,
-
         "Sequential_Pattern": false,
         "Initial_Inference": false
     },
-
-        
     "Taco_Version": 2,
     "Use_Mixed_Precision": false,
     "Inference_Cut": true,
-    "Inference_Path": "GST.Results/Inference/2024-05-08/",
-    "Checkpoint_Path": "GST.Results/Checkpoint/2024-05-08/",
+    "Inference_Path": "GST.Results/Inference/2024-05-18-No-X/",
+    "Checkpoint_Path": "GST.Results/Checkpoint/2024-05-18-No-X/",
+    "Log_Path": "GST.Results/Log/2024-05-18-No-X/",
     "Device": "0"
 }

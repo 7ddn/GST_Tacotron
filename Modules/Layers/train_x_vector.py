@@ -45,7 +45,7 @@ def train_model():
     model.compile(optimizer = optm, loss = 'sparse_categorical_crossentropy', metrics = 'sparse_categorical_accuracy')
 
     checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
-        filepath = './checkpoints_'+f'{date.today().strftime("%b_%d_%Y")}'+'/ckp.{epoch:02d}',
+        filepath = './Pretrained/X_Vector/checkpoints_'+f'{date.today().strftime("%b_%d_%Y")}'+'/ckp.{epoch:02d}',
         save_weights_only = True,
         save_best_only = True,
         verbose = 1)

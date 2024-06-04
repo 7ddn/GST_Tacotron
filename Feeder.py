@@ -4,7 +4,8 @@ from collections import deque
 from threading import Thread
 from random import shuffle
 
-from Pattern_Generator_ARPA import Mel_Generate
+# from Pattern_Generator_ARPA import Mel_Generate
+from Pattern_Generator import Mel_Generate
 from Modules.Utils import to_ARPA
 import tensorflow as tf
 
@@ -24,11 +25,14 @@ class Feeder:
             pattern_Generate_Thread.start()
 
     def Metadata_Load(self):
+        '''
         with open(hp_Dict['ARPA_Token_JSON_Path'], 'r') as f:
             self.token_Index_Dict = json.load(f)
-        
         '''
-            with open(hp_Dict['Text_Vectorization_Weights_Path'], 'rb') as f:
+        with open(hp_Dict['Token_JSON_Path'], 'r') as f:
+            self.token_Index_Dict = json.load(f)
+        '''
+        with open(hp_Dict['Text_Vectorization_Weights_Path'], 'rb') as f:
             tw = pickle.load(f)
             decoder = np.vectorize(lambda x: x.decode('UTF-8'))
             tw['weights'][0] = decoder(tw['weights'][0])
@@ -178,7 +182,8 @@ class Feeder:
         token_List = [
             np.array(
                 [self.token_Index_Dict['<S>']]+
-                [self.token_Index_Dict[word] for word in to_ARPA(sentence).split()] +
+                # [self.token_Index_Dict[word] for word in to_ARPA(sentence).split()] + 
+                [self.token_Index_Dict[letter] for letter in sentence] +
                 [self.token_Index_Dict['<E>']],
                 dtype= np.int32
                 )

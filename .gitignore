@@ -176,6 +176,7 @@ data/
 *bak*
 Inference_GST_OTR.py
 *checkpoint*
+*Pretrained*
 
 # vim cache
 *.swp

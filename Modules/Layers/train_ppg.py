@@ -11,25 +11,27 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import librosa
 
+from datetime import date
 import time
+from PPG_Layer import PPG_RNN
 
 from importlib.util import find_spec
-if find_spec("Modules") is not None:
-    from Modules.Word_to_ARPA import str_to_arpa 
-else:
-    from Word_to_ARPA import str_to_arpa
+from Word_to_ARPA import str_to_arpa 
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='mode')
     parser.add_argument('--mode', type=str, help='mode of script, train or eval')
     parser.add_argument('--factor')
     parser.add_argument('--dir')
+    parser.add_argument('--sliced', action='store_true')
     parser.add_argument('--sr')
     parser.add_argument('--frame_step')
     parser.add_argument('--frame_length')
     parser.add_argument('--patience')
-    # parser.add_argument(['-c', '--continue'], action = 'store_false')
     parser.add_argument('--eval_dir')
     parser.add_argument('--eval_alignment')
+    parser.add_argument('--cp_dir')
+    parser.add_argument('--initial_epoch')
 
     args = parser.parse_args()
     mode = args.mode
@@ -57,7 +59,7 @@ if __name__ == '__main__':
     # Checkpoints and EarlyStopping
 
     checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
-        filepath = './ppg/checkpoints/ckp.{epoch:02d}',
+        filepath = './Pretrained/PPG/checkpoints_'+f'{date.today().strftime("%b_%d_%Y")}'+'/ckp.{epoch:02d}',
         save_weights_only = True,
         save_best_only = True,
         verbose = 1)
@@ -67,27 +69,19 @@ if __name__ == '__main__':
     else:
         callbacks.append(tf.keras.callbacks.EarlyStopping(patience=int(args.patience)))
 
-'''
-# factor = 4
-base_frame_length = 320
-base_frame_step = 160
-frame_length_factor = 2
-
-frame_length = base_frame_length / frame_length_factor
-frame_step = base_frame_step / factor 
-'''
-
-def remove_letter(text):
-    return tf.strings.regex_replace(text, f'[0-9]', '')
-
 def init():
 
     database_dir = os.path.expanduser(dir)
 
-    ds = tf.data.Dataset.load(database_dir)
+    if args.sliced:
+        slices = [tf.data.Dataset.load(os.path.join(database_dir, slice_ind)) for slice_ind in os.listdir(database_dir)]
+        ds = slices[0]
+        for slice_ in slices[1:]:
+            ds = ds.concatenate(slice_)
+    else:
+        ds = tf.data.Dataset.load(database_dir)
 
-
-    tv_dict_path = "tv_layer_new.pkl"
+    tv_dict_path = "./Pretrained/PPG/ppg_dict.pkl"
     # TODO: move path to hyperparameter file
 
     if os.path.isfile(tv_dict_path):
@@ -95,7 +89,7 @@ def init():
         token_layer = tf.keras.layers.TextVectorization.from_config(from_disk['config'])
         token_layer.set_weights(from_disk['weights'])
     else:
-        token_layer = tf.keras.layers.TextVectorization(standardize = remove_letter)
+        token_layer = tf.keras.layers.TextVectorization()
         token_layer.adapt(ds.map(lambda wav, phone, speaker, filename: phone))
         pickle.dump({'config':token_layer.get_config(), 'weights': token_layer.get_weights()}, open(tv_dict_path, "wb"))
 
@@ -120,35 +114,6 @@ def get_mel(wav, sr = 16000, frame_length = 160, frame_step = 80, factor = 1):
     # print(log_mel.shape)
     return log_mel#[:-1, :]
 
-class PPG_CNN(tf.keras.Model):
-    def __init__(self, tokenizer, factor = 4, mel_dims = 80):
-        super().__init__()
-        self.tokenizer = tokenizer
-        self.factor = factor
-        self.mel_dims = mel_dims
-        dense_units = 512
-            # tf.keras.layers.Flatten(),
-        self.masking = tf.keras.layers.Masking(mask_value=0.)
-        self.bidir = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(units = 128, return_sequences=True))
-        self.dense_0 = tf.keras.layers.Dense(units = dense_units, activation = 'relu')
-        # tf.keras.layers.Reshape([-1, self.factor * dense_units])
-        self.avg_pool = tf.keras.layers.AveragePooling1D(pool_size = self.factor, strides = self.factor, padding = 'same')
-        self.lstm = tf.keras.layers.LSTM(units = 128, return_sequences=True)
-        self.output_dense = tf.keras.layers.Dense(units = self.tokenizer.vocabulary_size(), activation = 'softmax')
-        # self.softmax = tf.keras.layers.Softmax(axis = -1)
-    def call(self, mel):
-        # spec shape [batch_size, num_frames + 1, fft_size]
-        new_Tensor = self.masking(mel)
-        new_Tensor = self.bidir(mel)
-        new_Tensor = self.dense_0(new_Tensor)
-        if self.factor != 1:
-            new_Tensor = self.avg_pool(new_Tensor)
-        new_Tensor = self.lstm(new_Tensor)
-        new_Tensor = self.output_dense(new_Tensor)
-        # new_Tensor = self.softmax(new_Tensor)      
-
-        
-        return new_Tensor   
 
 def init_ds():
     
@@ -245,14 +210,23 @@ def train_model(masked_token = None):
     # model.compile(optimizer = 'adam', loss = 'sparse_categorical_crossentropy', metrics = 'sparse_categorical_accuracy')
     # model.compile(optimizer = 'adam', loss = masked_loss, metrics = masked_acc) 
 
-
-
-    history = model.fit(
-        train_ds,
-        epochs = 100,
-        validation_data = val_ds,
-        callbacks = callbacks
-    )
+    if args.cp_dir is not None:
+        latest = tf.train.latest_checkpoint(args.cp_dir)
+        model.load_weights(latest).expect_partial()
+        history = model.fit(
+            train_ds, 
+            epochs = 100,
+            validation_data = val_ds, 
+            callbacks = callbacks,
+            initial_epoch=int(args.initial_epoch)
+        )
+    else:
+        history = model.fit(
+            train_ds,
+            epochs = 100,
+            validation_data = val_ds,
+            callbacks = callbacks
+        )
 
     print('Evaluating trained model')
     model.evaluate(test_ds) 
@@ -285,7 +259,7 @@ def get_compact_prd(pred, vocab = None, given_list = False): # expect probabilit
 
 
 def eval_model(token_layer):
-    cp_dir = './ppg/checkpoints'
+    cp_dir = './Pretrained/PPG/checkpoints'
     latest = tf.train.latest_checkpoint(cp_dir)
     if latest is not None:
         print(f'Found latest checkpoint at {latest}')
@@ -342,7 +316,7 @@ if __name__ == '__main__':
         # masked_token = tf.cast(token_layer('sil')[0], dtype = tf.int64)
         masked_token = None
         train_ds, val_ds, test_ds = init_ds()
-        model = PPG_CNN(tokenizer = token_layer, factor = factor)
+        model = PPG_RNN(tokenizer = token_layer, factor = factor)
         train_model(masked_token = masked_token)
 
     elif mode == 'eval':
@@ -350,7 +324,7 @@ if __name__ == '__main__':
         if args.dir is not None and args.eval_dir is None:
             token_layer, ds = init()
             train_ds, val_ds, test_ds = init_ds()
-            model = PPG_CNN(tokenizer=token_layer, factor = factor)
+            model = PPG_RNN(tokenizer=token_layer, factor = factor)
             eval_model(token_layer = token_layer)
         elif args.dir is None and args.eval_dir is not None:
             wav_dir = os.path.expanduser(args.eval_dir)
@@ -373,7 +347,7 @@ if __name__ == '__main__':
                 token_layer = tf.keras.layers.TextVectorization.from_config(from_disk['config'])
                 token_layer.set_weights(from_disk['weights'])
             else:
-                token_layer = tf.keras.layers.TextVectorization(standardize = remove_letter)
+                token_layer = tf.keras.layers.TextVectorization(standardize = None)
                 token_layer.adapt(ds.map(lambda wav, phone, speaker, filename: phone))
                 pickle.dump({'config':token_layer.get_config(), 'weights': token_layer.get_weights()}, open(tv_dict_path, "wb"))
 
@@ -381,7 +355,7 @@ if __name__ == '__main__':
             
             vocab = token_layer.get_vocabulary()
      
-            model = PPG_CNN(tokenizer=token_layer, factor = factor)
+            model = PPG_RNN(tokenizer=token_layer, factor = factor)
             model.load_weights(latest).expect_partial()
             
             print('model is loaded')    
