@@ -8,9 +8,12 @@ class PPG_RNN(tf.keras.Model):
     def __init__(self, tokenizer=None, token_count = None, factor=1, mel_dims=80):
         super().__init__()
         self.tokenizer = tokenizer
+        self.token_count = token_count + 2
 
         if token_count is None and tokenizer is not None:
             self.token_count = tokenizer.vocabulary_size()
+
+            # should not conclude OOV and padding
 
         self.factor = factor
         self.mel_dims = mel_dims
@@ -46,6 +49,8 @@ class PPG_RNN(tf.keras.Model):
             return new_Tensor
 
         new_Tensor = self.output_dense(new_Tensor)
+
+        new_Tensor = new_Tensor[:, :, 2:]
         # new_Tensor = self.softmax(new_Tensor)
 
         return new_Tensor
@@ -53,6 +58,8 @@ class PPG_RNN(tf.keras.Model):
 
 class BDLayer(tf.keras.layers.Layer):
     def __init__(self, count = None, file_path = None):
+        super().__init__()
+
         # count is a dict with key being phoneme and value
         # being counts
 
@@ -61,19 +68,20 @@ class BDLayer(tf.keras.layers.Layer):
                 count = pickle.load(f)
 
         self.num_class = len(count)
-        self.prob = [math.log(count[p] / sum(count.values())) for p in count]
+        self.prob = [count[p] / sum(count.values()) for p in count]
 
         self.a = tf.convert_to_tensor(np.tile(self.prob, (self.num_class, 1)))
         self.b = tf.transpose(self.a)
 
-        self.a = 0.5 * tf.math.log(self.a)
-        self.b = 0.5 * tf.math.log(self.b)
+        self.a = tf.cast(0.5 * tf.math.log(self.a), dtype=tf.float32)
+        self.b = tf.cast(0.5 * tf.math.log(self.b), dtype=tf.float32)
 
     def call(self, ppg):
         # ppg [batch, time, dict_dim]
 
-        time_length = tf.shape(ppg)[1]
         sim_mat = tf.matmul(tf.transpose(ppg, perm=[0, 2, 1]), ppg)
+
+        time_length = tf.cast(tf.shape(ppg)[1], dtype = sim_mat.dtype)
         sim_mat = -tf.math.log(tf.math.sqrt(sim_mat / time_length))
 
         sim_mat += self.a

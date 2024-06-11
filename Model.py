@@ -129,7 +129,7 @@ class GST_Tacotron:
         )
         tensor_Dict["Train", "Export_Spectrogram"] = layer_Dict["Vocoder_Taco1"](
             tensor_Dict["Train", "Export_Mel"], training=True
-        )
+       )
 
         tensor_Dict["Inference", "Encoder"] = layer_Dict["Encoder"](
             input_Dict["Token"], training=False

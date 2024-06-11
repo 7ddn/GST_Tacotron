@@ -29,7 +29,7 @@
             },
             "PPG_RNN": {
                 "Size": 128,
-                "Checkpoint_Path": "Modules/Layers/Pretrained/PPG/checkpoints_May_30_2024"
+                "Checkpoint_Path": "Modules/Layers/Pretrained/PPG/checkpoints_Jun_01_2024"
             },
             "BD":{
                 "Count_Path": "Modules/Layers/Pretrained/phone_counts.pkl"
@@ -258,8 +258,8 @@
     "Taco_Version": 2,
     "Use_Mixed_Precision": false,
     "Inference_Cut": true,
-    "Inference_Path": "GST.Results/Inference/2024-05-18-No-X/",
-    "Checkpoint_Path": "GST.Results/Checkpoint/2024-05-18-No-X/",
-    "Log_Path": "GST.Results/Log/2024-05-18-No-X/",
+    "Inference_Path": "GST.Results/Inference/2024-06-04/",
+    "Checkpoint_Path": "GST.Results/Checkpoint/2024-06-04/",
+    "Log_Path": "GST.Results/Log/2024-06-04/",
     "Device": "0"
 }
